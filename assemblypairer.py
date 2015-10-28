@@ -37,6 +37,7 @@ def main():
 
     # Load in the contigs from each assembly.
     print("Loading assemblies... ", end="")
+    sys.stdout.flush()
     contigs1 = loadContigs(args.assembly1)
     contigs2 = loadContigs(args.assembly2)
     print("done\n")
@@ -45,6 +46,7 @@ def main():
 
     # Remove contigs below the length threshold.
     print("Filtering out contigs less than " + str(args.length) + " bp... ", end="")
+    sys.stdout.flush()
     contigs1 = filterContigsByLength(contigs1, args.length)
     contigs2 = filterContigsByLength(contigs2, args.length)
 
@@ -62,6 +64,7 @@ def main():
 
     # Build a BLAST database using the first assembly.
     print("Building BLAST database... ", end="")
+    sys.stdout.flush()
     makeblastdbCommand = ["makeblastdb", "-dbtype", "nucl", "-in", tempdir + "/contigs1.fasta"]
     p = subprocess.Popen(makeblastdbCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
@@ -69,6 +72,7 @@ def main():
 
     # BLAST the second assembly against the first.
     print("Running BLAST search... ", end="")
+    sys.stdout.flush()
     blastnCommand = ["blastn", "-db", tempdir + "/contigs1.fasta", "-query", tempdir + "/contigs2.fasta", "-outfmt", "6 length pident qseqid qstart qend qseq sseqid sstart send sseq"]
     p = subprocess.Popen(blastnCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
@@ -81,28 +85,29 @@ def main():
         blastAlignments.append(alignment)
     print("done\n")
 
+    # Filter the alignments for length and identity
+    print("BLAST alignments before filtering:", len(blastAlignments))
+    blastAlignments = filterBlastAlignments(blastAlignments, args.length, args.identity)
+    print("BLAST alignments after filtering: ", len(blastAlignments))
 
 
 
 
+    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
+    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
+    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
+    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
+    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    # Save the results to file
+    print("Saving alignments to file... ", end="")
+    sys.stdout.flush()
+    saveAlignmentsToFile(blastAlignments, args.out1, True)
+    saveAlignmentsToFile(blastAlignments, args.out2, False)
+    print("done\n")
 
     # Delete the temporary files.
     if os.path.exists(tempdir):
@@ -125,7 +130,7 @@ def getArguments():
     parser.add_argument('out1', help='The filename for the first set of paired contigs')
     parser.add_argument('out2', help='The filename for the second set of paired contigs')
     parser.add_argument('-l', '--length', action='store', help='Minimum alignment length', default=1000)
-    parser.add_argument('-i', '--identity', action='store', help='Minimum alignment identity', default=0.99)
+    parser.add_argument('-i', '--identity', action='store', help='Minimum alignment percent identity', default=99.0)
 
     return parser.parse_args()
 
@@ -205,17 +210,17 @@ class BlastAlignment:
     def __init__(self, blastString):
         blastStringParts = blastString.split("\t")
 
-        self.alignmentLength = int(blastStringParts[0])
+        self.length = int(blastStringParts[0])
         self.percentIdentity = float(blastStringParts[1])
 
         self.contig1Name = blastStringParts[2]
-        self.contig1Start = blastStringParts[3]
-        self.contig1End= blastStringParts[4]
+        self.contig1Start = int(blastStringParts[3])
+        self.contig1End= int(blastStringParts[4])
         self.contig1Sequence= blastStringParts[5]
 
         self.contig2Name = blastStringParts[6]
-        self.contig2Start = blastStringParts[7]
-        self.contig2End= blastStringParts[8]
+        self.contig2Start = int(blastStringParts[7])
+        self.contig2End= int(blastStringParts[8])
         self.contig2Sequence= blastStringParts[9]
 
 
@@ -245,7 +250,6 @@ def convertTimeDeltaToReadableString(timeDelta):
 
 
 
-
 def saveContigsToFile(contigList, filename):
     outfile = open(filename, 'w')
     for contig in contigList:
@@ -258,11 +262,54 @@ def saveContigsToFile(contigList, filename):
 
 
 
+# If contig1 is True, then the alignments for the first set of contigs are
+# saved to file.  If False, the alignments for the second set are saved.
+def saveAlignmentsToFile(alignmentList, filename, contig1):
+    outfile = open(filename, 'w')
+
+    for alignment in alignmentList:
+
+        alignmentName = ""
+        if contig1:
+            alignmentName += alignment.contig1Name
+            alignmentName += "_" + str(alignment.contig1Start)
+            alignmentName += "_to_" + str(alignment.contig1End)
+        else:
+            alignmentName += alignment.contig2Name
+            alignmentName += "_" + str(alignment.contig2Start)
+            alignmentName += "_to_" + str(alignment.contig2End)
+
+        outfile.write('>' + alignmentName + '\n')
+
+        sequence = ""
+        if contig1:
+            sequence = alignment.contig1Sequence
+        else:
+            sequence = alignment.contig2Sequence
+
+        while len(sequence) > 60:
+            outfile.write(sequence[0:60] + '\n')
+            sequence = sequence[60:]
+        outfile.write(sequence + '\n')
+
+
+
 def getTotalContigLength(contigs):
     totalLength = 0
     for contig in contigs:
         totalLength += contig.length
     return totalLength
+
+
+
+def filterBlastAlignments(alignments, minLength, minIdentity):
+    filteredAlignments = []
+
+    for alignment in alignments:
+        if alignment.length >= minLength and alignment.percentIdentity >= minIdentity:
+            filteredAlignments.append(alignment)
+
+    return filteredAlignments
 
 
 
