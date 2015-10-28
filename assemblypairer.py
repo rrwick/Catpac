@@ -73,7 +73,7 @@ def main():
     # BLAST the second assembly against the first.
     print("Running BLAST search... ", end="")
     sys.stdout.flush()
-    blastnCommand = ["blastn", "-db", tempdir + "/contigs1.fasta", "-query", tempdir + "/contigs2.fasta", "-outfmt", "6 length pident qseqid qstart qend qseq sseqid sstart send sseq"]
+    blastnCommand = ["blastn", "-db", tempdir + "/contigs1.fasta", "-query", tempdir + "/contigs2.fasta", "-outfmt", "6 length pident qseqid qstart qend qseq sseqid sstart send sseq mismatch gaps"]
     p = subprocess.Popen(blastnCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
 
@@ -85,10 +85,15 @@ def main():
         blastAlignments.append(alignment)
     print("done\n")
 
-    # Filter the alignments for length and identity
+    # Filter the alignments for length and identity.
     print("BLAST alignments before filtering:", len(blastAlignments))
-    blastAlignments = filterBlastAlignments(blastAlignments, args.length, args.identity)
+    blastAlignments = filterBlastAlignments(blastAlignments, int(args.length), float(args.identity))
     print("BLAST alignments after filtering: ", len(blastAlignments))
+
+    # Tally up mismatches and gaps.
+    mismatches, gaps = totalMismatchesAndGaps(blastAlignments)
+    print("\nTotal alignment mismatches:", mismatches)
+    print("Total alignment gaps:      ", gaps)
 
 
 
@@ -215,13 +220,16 @@ class BlastAlignment:
 
         self.contig1Name = blastStringParts[2]
         self.contig1Start = int(blastStringParts[3])
-        self.contig1End= int(blastStringParts[4])
-        self.contig1Sequence= blastStringParts[5]
+        self.contig1End = int(blastStringParts[4])
+        self.contig1Sequence = blastStringParts[5]
 
         self.contig2Name = blastStringParts[6]
         self.contig2Start = int(blastStringParts[7])
-        self.contig2End= int(blastStringParts[8])
-        self.contig2Sequence= blastStringParts[9]
+        self.contig2End = int(blastStringParts[8])
+        self.contig2Sequence = blastStringParts[9]
+
+        self.mismatches = int(blastStringParts[10])
+        self.gaps = int(blastStringParts[11])
 
 
 
@@ -310,6 +318,18 @@ def filterBlastAlignments(alignments, minLength, minIdentity):
             filteredAlignments.append(alignment)
 
     return filteredAlignments
+
+
+def totalMismatchesAndGaps(alignments):
+
+    mismatches = 0
+    gaps = 0
+
+    for alignment in alignments:
+        mismatches += alignment.mismatches
+        gaps += alignment.gaps
+
+    return (mismatches, gaps)
 
 
 
