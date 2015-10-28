@@ -3,20 +3,20 @@
 
 # Copyright 2015 Ryan Wick
 
-# This file is part of AssemblyPairer.
+# This file is part of Catpac.
 
-# AssemblyPairer is free software: you can redistribute it and/or modify it
+# Catpac is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the Free 
 # Software Foundation, either version 3 of the License, or (at your option) any
 # later version.
 
-# AssemblyPairer is distributed in the hope that it will be useful, but WITHOUT
+# Catpac is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details.
 
 # You should have received a copy of the GNU General Public License along with
-# AssemblyPairer.  If not, see <http:# www.gnu.org/licenses/>.
+# Catpac.  If not, see <http:# www.gnu.org/licenses/>.
 
 
 from __future__ import division
@@ -34,7 +34,7 @@ def main():
     startTime = datetime.datetime.now()
     args = getArguments()
 
-    print("\nAssemblyPairer\n--------------\n")
+    print("\nCatpac\n--------------\n")
 
     # Load in the contigs from each assembly.
     print("Loading assemblies... ", end="")
@@ -132,7 +132,7 @@ def main():
 
 
 def getArguments():
-    parser = argparse.ArgumentParser(description='AssemblyPairer')
+    parser = argparse.ArgumentParser(description='Catpac')
     parser.add_argument('assembly1', help='The first set of assembled contigs')
     parser.add_argument('assembly2', help='The second set of assembled contigs')
     parser.add_argument('out1', help='The filename for the first set of paired contigs')
