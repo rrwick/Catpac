@@ -34,7 +34,7 @@ def main():
     startTime = datetime.datetime.now()
     args = getArguments()
 
-    print("\nCatpac\n--------------\n")
+    print("\nCatpac: a Contig Alignment Tool for Pairwise Assembly Comparison\n----------------------------------------------------------------\n")
 
     # Load in the contigs from each assembly.
     print("Loading assemblies... ", end="")
