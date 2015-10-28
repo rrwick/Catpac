@@ -389,15 +389,34 @@ def doesAlignmentPairOverlap(alignmentPair, maxOverlap):
         return False
 
     if alignment1.contig1Name == alignment2.contig1Name:
-        a1c1Positions = set(range(alignment1.contig1Start, alignment1.contig1End + 1))
-        a2c1Positions = set(range(alignment2.contig1Start, alignment2.contig1End + 1))
+
+        a1c1Start = alignment1.contig1Start
+        a1c1End = alignment1.contig1End
+        a2c1Start = alignment2.contig1Start
+        a2c1End = alignment2.contig1End
+
+        a1c1Positions = set(range(a1c1Start, a1c1End + 1))
+        a2c1Positions = set(range(a2c1Start, a2c1End + 1))
         c1OverlapLength = len(a1c1Positions & a2c1Positions)
         if c1OverlapLength > maxOverlap:
             return True
 
     if alignment1.contig2Name == alignment2.contig2Name:
-        a1c2Positions = set(range(alignment1.contig2Start, alignment1.contig2End + 1))
-        a2c2Positions = set(range(alignment2.contig2Start, alignment2.contig2End + 1))
+
+        a1c2Start = alignment1.contig2Start
+        a1c2End = alignment1.contig2End
+        a2c2Start = alignment2.contig2Start
+        a2c2End = alignment2.contig2End
+
+        # Swap the positions, if necessary (happens when a hit is on the
+        # reverse complement strand)
+        if (a1c2Start > a1c2End):
+            a1c2Start, a1c2End = a1c2End, a1c2Start
+        if (a2c2Start > a2c2End):
+            a2c2Start, a2c2End = a2c2End, a2c2Start
+
+        a1c2Positions = set(range(a1c2Start, a1c2End + 1))
+        a2c2Positions = set(range(a2c2Start, a2c2End + 1))
         c2OverlapLength = len(a1c2Positions & a2c2Positions)
         if c2OverlapLength > maxOverlap:
             return True
