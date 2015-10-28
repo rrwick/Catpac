@@ -40,9 +40,11 @@ def main():
     sys.stdout.flush()
     contigs1 = loadContigs(args.assembly1)
     contigs2 = loadContigs(args.assembly2)
+    contigs1TotalLength = getTotalContigLength(contigs1)
+    contigs2TotalLength = getTotalContigLength(contigs2)
     print("done\n")
-    print("Loaded assembly 1: " + str(len(contigs1)) + " contigs, " + str(getTotalContigLength(contigs1)) + " bp")
-    print("Loaded assembly 2: " + str(len(contigs2)) + " contigs, " + str(getTotalContigLength(contigs2)) + " bp\n")
+    print("Loaded assembly 1: " + str(len(contigs1)) + " contigs, " + str(contigs1TotalLength) + " bp")
+    print("Loaded assembly 2: " + str(len(contigs2)) + " contigs, " + str(contigs2TotalLength) + " bp\n")
 
     # Remove contigs below the length threshold.
     print("Filtering out contigs less than " + str(args.length) + " bp... ", end="")
@@ -90,21 +92,28 @@ def main():
     blastAlignments = filterBlastAlignments(blastAlignments, int(args.length), float(args.identity))
     print("BLAST alignments after filtering: ", len(blastAlignments))
 
-    # Tally up mismatches and gaps.
-    mismatches, gaps = totalMismatchesAndGaps(blastAlignments)
+
+
+
+    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
+    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
+    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
+    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
+    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
+
+
+
+
+    # Display some summary information about the alignments.
+    mismatches, gaps, length = totalMismatchesGapsAndLength(blastAlignments)
     print("\nTotal alignment mismatches:", mismatches)
     print("Total alignment gaps:      ", gaps)
 
-
-
-
-    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
-    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
-    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
-    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
-    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
-
-
+    print("\nTotal alignment length:", length)
+    contigs1Percent = 100.0 * length / contigs1TotalLength
+    contigs2Percent = 100.0 * length / contigs2TotalLength
+    print("{0:.3f}".format(contigs1Percent) + "% of assembly 1")
+    print("{0:.3f}".format(contigs2Percent) + "% of assembly 2\n ")
 
 
     # Save the results to file
@@ -121,7 +130,8 @@ def main():
     # Print a final message.
     endTime = datetime.datetime.now()
     duration = endTime - startTime
-    printFinishedMessage(duration)
+    print('Finished!')
+    print('Total time to complete:', convertTimeDeltaToReadableString(duration))
 
 
 
@@ -233,12 +243,6 @@ class BlastAlignment:
 
 
 
-def printFinishedMessage(duration):
-    print('\nFinished!')
-    print('Total time to complete:', convertTimeDeltaToReadableString(duration))
-
-
-
 def convertTimeDeltaToReadableString(timeDelta):
     seconds = timeDelta.seconds
     hours = timeDelta.days * 24
@@ -320,16 +324,18 @@ def filterBlastAlignments(alignments, minLength, minIdentity):
     return filteredAlignments
 
 
-def totalMismatchesAndGaps(alignments):
+def totalMismatchesGapsAndLength(alignments):
 
     mismatches = 0
     gaps = 0
+    length = 0
 
     for alignment in alignments:
         mismatches += alignment.mismatches
         gaps += alignment.gaps
+        length += alignment.length
 
-    return (mismatches, gaps)
+    return (mismatches, gaps, length)
 
 
 
