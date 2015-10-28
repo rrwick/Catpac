@@ -132,7 +132,7 @@ def main():
 
 
 def getArguments():
-    parser = argparse.ArgumentParser(description='Catpac')
+    parser = argparse.ArgumentParser(description='Catpac: a Contig Alignment Tool for Pairwise Assembly Comparison')
     parser.add_argument('assembly1', help='The first set of assembled contigs')
     parser.add_argument('assembly2', help='The second set of assembled contigs')
     parser.add_argument('out1', help='The filename for the first set of paired contigs')
