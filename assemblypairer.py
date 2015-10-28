@@ -225,12 +225,12 @@ class BlastAlignment:
         self.contig1Name = blastStringParts[2]
         self.contig1Start = int(blastStringParts[3])
         self.contig1End = int(blastStringParts[4])
-        self.contig1Sequence = blastStringParts[5]
+        self.contig1Sequence = blastStringParts[5].replace("-","")
 
         self.contig2Name = blastStringParts[6]
         self.contig2Start = int(blastStringParts[7])
         self.contig2End = int(blastStringParts[8])
-        self.contig2Sequence = blastStringParts[9]
+        self.contig2Sequence = blastStringParts[9].replace("-","")
 
         self.mismatches = int(blastStringParts[10])
         self.gaps = int(blastStringParts[11])
@@ -242,9 +242,14 @@ class BlastAlignment:
             self.contig2Name == other.contig2Name and
             self.contig2Start == other.contig2Start and
             self.contig2End == other.contig2End)
+
     def __str__(self):
         return self.contig1Name + ": " + str(self.contig1Start) + " to " + str(self.contig1End) + ", " + \
                self.contig2Name + ": " + str(self.contig2Start) + " to " + str(self.contig2End)
+
+    def __repr__(self):
+        return self.contig1Name + "_" + str(self.contig1Start) + "_" + str(self.contig1End) + "_" + \
+               self.contig2Name + "_" + str(self.contig2Start) + "_" + str(self.contig2End)
 
 
 
@@ -356,39 +361,74 @@ def totalMismatchesGapsAndLength(alignments):
 
 
 def filterBlastAlignmentsByOverlap(alignments, contigs1, contigs2, maxOverlap):
+
+    overlappingAlignmentPairs = []
+    alignmentPairs = list(itertools.combinations(alignments, 2))
+    for alignmentPair in alignmentPairs:
+        if doesAlignmentPairOverlap(alignmentPair, maxOverlap):
+            overlappingAlignmentPairs.append(alignmentPair)
+
     filteredAlignments = []
-    overlappingPairs = []
-
-    for alignment1 in alignments:
-
-        anyOverlap = False
-
-        a1c1Positions = set(range(alignment1.contig1Start, alignment1.contig1End + 1))
-        a1c2Positions = set(range(alignment1.contig2Start, alignment1.contig2End + 1))
-
-        for alignment2 in alignments:
-
-            if alignment1 == alignment2:
-                continue
-
-            if alignment1.contig1Name == alignment2.contig1Name:
-                a2c1Positions = set(range(alignment2.contig1Start, alignment2.contig1End + 1))
-                c1OverlapLength = len(a1c1Positions & a2c1Positions)
-                if c1OverlapLength > maxOverlap:
-                    anyOverlap = True
-                    break
-
-            if alignment1.contig2Name == alignment2.contig2Name:
-                a2c2Positions = set(range(alignment2.contig2Start, alignment2.contig2End + 1))
-                c2OverlapLength = len(a1c2Positions & a2c2Positions)
-                if c2OverlapLength > maxOverlap:
-                    anyOverlap = True
-                    break
-
-        if not anyOverlap:
-            filteredAlignments.append(alignment1)
+    for alignment in alignments:
+        if alignmentPassesOverlapFilter(alignment, overlappingAlignmentPairs):
+            filteredAlignments.append(alignment)
 
     return filteredAlignments
+
+
+
+# This function looks at two alignments and determines if they overlap, either
+# in contig 1 or in contig 2.
+# It uses sets of positions, which probably isn't a very efficient way to do
+# this, but it works well enough.
+def doesAlignmentPairOverlap(alignmentPair, maxOverlap):
+    alignment1 = alignmentPair[0]
+    alignment2 = alignmentPair[1]
+
+    if alignment1 == alignment2:
+        return False
+
+    if alignment1.contig1Name == alignment2.contig1Name:
+        a1c1Positions = set(range(alignment1.contig1Start, alignment1.contig1End + 1))
+        a2c1Positions = set(range(alignment2.contig1Start, alignment2.contig1End + 1))
+        c1OverlapLength = len(a1c1Positions & a2c1Positions)
+        if c1OverlapLength > maxOverlap:
+            return True
+
+    if alignment1.contig2Name == alignment2.contig2Name:
+        a1c2Positions = set(range(alignment1.contig2Start, alignment1.contig2End + 1))
+        a2c2Positions = set(range(alignment2.contig2Start, alignment2.contig2End + 1))
+        c2OverlapLength = len(a1c2Positions & a2c2Positions)
+        if c2OverlapLength > maxOverlap:
+            return True
+
+
+# An alignment is said to pass the overlap filter is one of the two conditions
+# is true:
+#    1) it is not in any overlapping pairs
+#    2) it is in overlapping pairs, but it is always the longer alignment in
+#       the pair
+def alignmentPassesOverlapFilter(alignment, overlappingAlignmentPairs):
+
+    for overlappingAlignmentPair in overlappingAlignmentPairs:
+        alignment1 = overlappingAlignmentPair[0]
+        alignment2 = overlappingAlignmentPair[1]
+
+        # If an alignment is in an overlapping pair where they are the same
+        # length, it fails the filter.
+        if alignment1.length == alignment2.length and \
+               (alignment == alignment1 or alignment == alignment2):
+           return False
+
+        # If an alignment is in an overlapping pair where it is the shorter
+        # one, it fails the filter.
+        shorterAlignment = alignment1
+        if alignment2.length < alignment1.length:
+            shorterAlignment = alignment2
+        if alignment == shorterAlignment:
+            return False
+
+    return True
 
 
 
