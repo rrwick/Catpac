@@ -27,6 +27,7 @@ import os
 import argparse
 import datetime
 import shutil
+import itertools
 
 
 def main():
@@ -241,6 +242,9 @@ class BlastAlignment:
             self.contig2Name == other.contig2Name and
             self.contig2Start == other.contig2Start and
             self.contig2End == other.contig2End)
+    def __str__(self):
+        return self.contig1Name + ": " + str(self.contig1Start) + " to " + str(self.contig1End) + ", " + \
+               self.contig2Name + ": " + str(self.contig2Start) + " to " + str(self.contig2End)
 
 
 
@@ -353,6 +357,7 @@ def totalMismatchesGapsAndLength(alignments):
 
 def filterBlastAlignmentsByOverlap(alignments, contigs1, contigs2, maxOverlap):
     filteredAlignments = []
+    overlappingPairs = []
 
     for alignment1 in alignments:
 
