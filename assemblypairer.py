@@ -1,0 +1,271 @@
+#!/usr/bin/env python
+
+
+# Copyright 2015 Ryan Wick
+
+# This file is part of AssemblyPairer.
+
+# AssemblyPairer is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the Free 
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+
+# AssemblyPairer is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
+
+# You should have received a copy of the GNU General Public License along with
+# AssemblyPairer.  If not, see <http:# www.gnu.org/licenses/>.
+
+
+from __future__ import division
+from __future__ import print_function
+import sys
+import subprocess
+import os
+import argparse
+import datetime
+import shutil
+
+
+def main():
+    startTime = datetime.datetime.now()
+    args = getArguments()
+
+    print("\nAssemblyPairer\n--------------\n")
+
+    # Load in the contigs from each assembly.
+    print("Loading assemblies... ", end="")
+    contigs1 = loadContigs(args.assembly1)
+    contigs2 = loadContigs(args.assembly2)
+    print("done\n")
+    print("Loaded assembly 1: " + str(len(contigs1)) + " contigs, " + str(getTotalContigLength(contigs1)) + " bp")
+    print("Loaded assembly 2: " + str(len(contigs2)) + " contigs, " + str(getTotalContigLength(contigs2)) + " bp\n")
+
+    # Remove contigs below the length threshold.
+    print("Filtering out contigs less than " + str(args.length) + " bp... ", end="")
+    contigs1 = filterContigsByLength(contigs1, args.length)
+    contigs2 = filterContigsByLength(contigs2, args.length)
+
+    # Make a temporary directory for the alignment files.
+    tempdir = os.getcwd() + '/temp'
+    if not os.path.exists(tempdir):
+        os.makedirs(tempdir)
+
+    # Save the reduced contig sets to file.
+    saveContigsToFile(contigs1, tempdir + "/contigs1.fasta")
+    saveContigsToFile(contigs2, tempdir + "/contigs2.fasta")
+    print("done\n")
+    print("Filtered assembly 1: " + str(len(contigs1)) + " contigs, " + str(getTotalContigLength(contigs1)) + " bp")
+    print("Filtered assembly 2: " + str(len(contigs2)) + " contigs, " + str(getTotalContigLength(contigs2)) + " bp\n")
+
+    # Build a BLAST database using the first assembly.
+    print("Building BLAST database... ", end="")
+    makeblastdbCommand = ["makeblastdb", "-dbtype", "nucl", "-in", tempdir + "/contigs1.fasta"]
+    p = subprocess.Popen(makeblastdbCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = p.communicate()
+    print("done\n")
+
+    # BLAST the second assembly against the first.
+    print("Running BLAST search... ", end="")
+    blastnCommand = ["blastn", "-db", tempdir + "/contigs1.fasta", "-query", tempdir + "/contigs2.fasta", "-outfmt", "6 length pident qseqid qstart qend qseq sseqid sstart send sseq"]
+    p = subprocess.Popen(blastnCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = p.communicate()
+
+    # Save the alignments in Python objects.
+    alignmentStrings = out.splitlines()
+    blastAlignments = []
+    for alignmentString in alignmentStrings:
+        alignment = BlastAlignment(alignmentString)
+        blastAlignments.append(alignment)
+    print("done\n")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # Delete the temporary files.
+    if os.path.exists(tempdir):
+        shutil.rmtree(tempdir)
+
+    # Print a final message.
+    endTime = datetime.datetime.now()
+    duration = endTime - startTime
+    printFinishedMessage(duration)
+
+
+
+
+
+
+def getArguments():
+    parser = argparse.ArgumentParser(description='AssemblyPairer')
+    parser.add_argument('assembly1', help='The first set of assembled contigs')
+    parser.add_argument('assembly2', help='The second set of assembled contigs')
+    parser.add_argument('out1', help='The filename for the first set of paired contigs')
+    parser.add_argument('out2', help='The filename for the second set of paired contigs')
+    parser.add_argument('-l', '--length', action='store', help='Minimum alignment length', default=1000)
+    parser.add_argument('-i', '--identity', action='store', help='Minimum alignment identity', default=0.99)
+
+    return parser.parse_args()
+
+
+
+# This function takes a contig filename and returns a list of Contig objects.
+def loadContigs(contigFilename):
+
+    contigs = []
+
+    contigFile = open(contigFilename, 'r')
+
+    name = ''
+    sequence = ''
+    for line in contigFile:
+
+        strippedLine = line.strip()
+
+        # Skip empty lines.
+        if len(strippedLine) == 0:
+            continue
+
+        # Header lines indicate the start of a new contig.
+        if strippedLine[0] == '>':
+
+            # If a contig is currently stored, save it now.
+            if len(name) > 0:
+                contig = Contig(name, sequence)
+                contigs.append(contig)
+                name = ''
+                sequence = ''
+
+            name = strippedLine[1:]
+
+        # If not a header line, we assume this is a sequence line.
+        else:
+            sequence += strippedLine
+
+    # Save the last contig.
+    if len(name) > 0:
+        contig = Contig(name, sequence)
+        contigs.append(contig)
+
+    return contigs
+
+
+
+# This function takes a list of Contig objects and returns another list of
+# Contig objects.  Only contigs with a length greater than or equal to the
+# threshold will make it into the returned list.
+def filterContigsByLength(contigs, lengthThreshold):
+
+    lengthThreshold = int(lengthThreshold)
+    filteredContigs = []
+
+    for contig in contigs:
+        if contig.length >= lengthThreshold:
+            filteredContigs.append(contig)
+
+    return filteredContigs
+
+
+
+# This class holds a contig: its name, sequence and length.
+class Contig:
+    def __init__(self, name, sequence):
+        self.name = name
+        self.sequence = sequence
+        self.length = len(sequence)
+
+    def __lt__(self, other):
+        return self.length < other.length
+
+
+# This class holds a BLAST alignment
+class BlastAlignment:
+    def __init__(self, blastString):
+        blastStringParts = blastString.split("\t")
+
+        self.alignmentLength = int(blastStringParts[0])
+        self.percentIdentity = float(blastStringParts[1])
+
+        self.contig1Name = blastStringParts[2]
+        self.contig1Start = blastStringParts[3]
+        self.contig1End= blastStringParts[4]
+        self.contig1Sequence= blastStringParts[5]
+
+        self.contig2Name = blastStringParts[6]
+        self.contig2Start = blastStringParts[7]
+        self.contig2End= blastStringParts[8]
+        self.contig2Sequence= blastStringParts[9]
+
+
+
+def printFinishedMessage(duration):
+    print('\nFinished!')
+    print('Total time to complete:', convertTimeDeltaToReadableString(duration))
+
+
+
+def convertTimeDeltaToReadableString(timeDelta):
+    seconds = timeDelta.seconds
+    hours = timeDelta.days * 24
+    hours += seconds // 3600
+    seconds = seconds % 3600
+    minutes = seconds // 60
+    seconds = seconds % 60
+    seconds += timeDelta.microseconds / 1000000.0
+    secondString = "{:.1f}".format(seconds)
+
+    returnString = ""
+    if hours > 0:
+        return str(hours) + ' h, ' + str(minutes) + ' min, ' + secondString + ' s'
+    if minutes > 0:
+        return str(minutes) + ' min, ' + secondString + ' s'
+    return secondString + ' s'
+
+
+
+
+def saveContigsToFile(contigList, filename):
+    outfile = open(filename, 'w')
+    for contig in contigList:
+        outfile.write('>' + contig.name + '\n')
+        sequence = contig.sequence
+        while len(sequence) > 60:
+            outfile.write(sequence[0:60] + '\n')
+            sequence = sequence[60:]
+        outfile.write(sequence + '\n')
+
+
+
+def getTotalContigLength(contigs):
+    totalLength = 0
+    for contig in contigs:
+        totalLength += contig.length
+    return totalLength
+
+
+
+# Standard boilerplate to call the main() function to begin the program.
+if __name__ == '__main__':
+    main()
