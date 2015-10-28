@@ -88,21 +88,13 @@ def main():
     print("done\n")
 
     # Filter the alignments for length and identity.
-    print("BLAST alignments before filtering:", len(blastAlignments))
-    blastAlignments = filterBlastAlignments(blastAlignments, int(args.length), float(args.identity))
-    print("BLAST alignments after filtering: ", len(blastAlignments))
-
-
-
-
-    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
-    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
-    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
-    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
-    # CHECK TO ENSURE THERE ISN'T OVERLAP!!!!!
-
-
-
+    print("BLAST alignments before filtering:        ", len(blastAlignments))
+    blastAlignments = filterBlastAlignmentsByLength(blastAlignments, int(args.length))
+    print("BLAST alignments after length filtering:  ", len(blastAlignments))
+    blastAlignments = filterBlastAlignmentsByIdentity(blastAlignments, float(args.identity))
+    print("BLAST alignments after identity filtering:", len(blastAlignments))
+    blastAlignments = filterBlastAlignmentsByOverlap(blastAlignments, contigs1, contigs2, int(args.maxoverlap))
+    print("BLAST alignments after overlap filtering: ", len(blastAlignments))
 
     # Display some summary information about the alignments.
     mismatches, gaps, length = totalMismatchesGapsAndLength(blastAlignments)
@@ -112,8 +104,8 @@ def main():
     print("\nTotal alignment length:", length)
     contigs1Percent = 100.0 * length / contigs1TotalLength
     contigs2Percent = 100.0 * length / contigs2TotalLength
-    print("{0:.3f}".format(contigs1Percent) + "% of assembly 1")
-    print("{0:.3f}".format(contigs2Percent) + "% of assembly 2\n ")
+    print("  " + "{0:.3f}".format(contigs1Percent) + "% of assembly 1")
+    print("  " + "{0:.3f}".format(contigs2Percent) + "% of assembly 2\n ")
 
 
     # Save the results to file
@@ -146,6 +138,7 @@ def getArguments():
     parser.add_argument('out2', help='The filename for the second set of paired contigs')
     parser.add_argument('-l', '--length', action='store', help='Minimum alignment length', default=1000)
     parser.add_argument('-i', '--identity', action='store', help='Minimum alignment percent identity', default=99.0)
+    parser.add_argument('-o', '--maxoverlap', action='store', help='Maximum overlap between alignments', default=51)
 
     return parser.parse_args()
 
@@ -240,6 +233,14 @@ class BlastAlignment:
 
         self.mismatches = int(blastStringParts[10])
         self.gaps = int(blastStringParts[11])
+    
+    def __eq__(self, other):
+        return (self.contig1Name == other.contig1Name and
+            self.contig1Start == other.contig1Start and
+            self.contig1End == other.contig1End and
+            self.contig2Name == other.contig2Name and
+            self.contig2Start == other.contig2Start and
+            self.contig2End == other.contig2End)
 
 
 
@@ -314,14 +315,25 @@ def getTotalContigLength(contigs):
 
 
 
-def filterBlastAlignments(alignments, minLength, minIdentity):
+def filterBlastAlignmentsByLength(alignments, minLength):
     filteredAlignments = []
 
     for alignment in alignments:
-        if alignment.length >= minLength and alignment.percentIdentity >= minIdentity:
+        if alignment.length >= minLength:
             filteredAlignments.append(alignment)
 
     return filteredAlignments
+
+
+def filterBlastAlignmentsByIdentity(alignments, minIdentity):
+    filteredAlignments = []
+
+    for alignment in alignments:
+        if alignment.percentIdentity >= minIdentity:
+            filteredAlignments.append(alignment)
+
+    return filteredAlignments
+
 
 
 def totalMismatchesGapsAndLength(alignments):
@@ -336,6 +348,42 @@ def totalMismatchesGapsAndLength(alignments):
         length += alignment.length
 
     return (mismatches, gaps, length)
+
+
+
+def filterBlastAlignmentsByOverlap(alignments, contigs1, contigs2, maxOverlap):
+    filteredAlignments = []
+
+    for alignment1 in alignments:
+
+        anyOverlap = False
+
+        a1c1Positions = set(range(alignment1.contig1Start, alignment1.contig1End + 1))
+        a1c2Positions = set(range(alignment1.contig2Start, alignment1.contig2End + 1))
+
+        for alignment2 in alignments:
+
+            if alignment1 == alignment2:
+                continue
+
+            if alignment1.contig1Name == alignment2.contig1Name:
+                a2c1Positions = set(range(alignment2.contig1Start, alignment2.contig1End + 1))
+                c1OverlapLength = len(a1c1Positions & a2c1Positions)
+                if c1OverlapLength > maxOverlap:
+                    anyOverlap = True
+                    break
+
+            if alignment1.contig2Name == alignment2.contig2Name:
+                a2c2Positions = set(range(alignment2.contig2Start, alignment2.contig2End + 1))
+                c2OverlapLength = len(a1c2Positions & a2c2Positions)
+                if c2OverlapLength > maxOverlap:
+                    anyOverlap = True
+                    break
+
+        if not anyOverlap:
+            filteredAlignments.append(alignment1)
+
+    return filteredAlignments
 
 
 
