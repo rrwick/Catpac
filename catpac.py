@@ -73,8 +73,8 @@ def main():
     if args.minreaddepth > 0.0 or args.maxreaddepth > 0.0:
         print("\nFiltering out contigs with a relative read depth less than " + str(args.minreaddepth) + " or greater than " + str(args.maxreaddepth) + "... ", end="")
         sys.stdout.flush()
-        contigs1 = filterContigsByReadDepth(contigs1, args.minreaddepth * contigs1MedianReadDepth, args.maxreaddepth * contigs1MedianReadDepth)
-        contigs2 = filterContigsByReadDepth(contigs2, args.minreaddepth * contigs2MedianReadDepth, args.maxreaddepth * contigs2MedianReadDepth)
+        contigs1 = filterContigsByReadDepth(contigs1, float(args.minreaddepth) * contigs1MedianReadDepth, float(args.maxreaddepth) * contigs1MedianReadDepth)
+        contigs2 = filterContigsByReadDepth(contigs2, float(args.minreaddepth) * contigs2MedianReadDepth, float(args.maxreaddepth) * contigs2MedianReadDepth)
         print("done\n")
         print("Filtered assembly 1: " + str(len(contigs1)) + " contigs, " + str(getTotalContigLength(contigs1)) + " bp")
         print("Filtered assembly 2: " + str(len(contigs2)) + " contigs, " + str(getTotalContigLength(contigs2)) + " bp\n")
