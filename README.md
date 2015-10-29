@@ -2,9 +2,9 @@
 
 Catpac is a Python script that conducts a focused, iterative *de novo* assembly.
 
-The user gives Catpac two files of assembled contigs from very closely related specimens.  Catpac will conduct a BLAST search between the two and output two files the alignments.
+The user gives Catpac two files of assembled contigs from very closely related specimens.  Catpac will conduct a BLAST search between the two and output the alignments.
 
-The purpose of Catpac is to produce two reduced sets of the assemblies that are more easily compared.
+The purpose of Catpac is to produce two reduced sets of the assemblies that are more easily compared.  Small-scale variations like SNPs and small indels should be represented in these reduced sets.  However, larger scale structural variations will be filtered out.
 
 ## Installation
 
