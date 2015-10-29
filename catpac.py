@@ -48,11 +48,11 @@ def main():
 
     print("done\n")
     print("Loaded assembly 1: ")
-    print("      " + str(len(contigs1)) + " contigs, " + str(contigs1TotalLength) + " bp")
-    print("      median read depth (by base): " + str(contigs1MedianReadDepth))
+    print("   " + str(len(contigs1)) + " contigs, " + str(contigs1TotalLength) + " bp")
+    print("   median read depth (by base): " + str(contigs1MedianReadDepth))
     print("\nLoaded assembly 2: ")
-    print("      " + str(len(contigs2)) + " contigs, " + str(contigs2TotalLength) + " bp")
-    print("      median read depth (by base): " + str(contigs2MedianReadDepth) + "\n")
+    print("   " + str(len(contigs2)) + " contigs, " + str(contigs2TotalLength) + " bp")
+    print("   median read depth (by base): " + str(contigs2MedianReadDepth) + "\n")
 
     # Make a temporary directory for the alignment files.
     tempdir = os.getcwd() + '/temp'
@@ -60,31 +60,31 @@ def main():
         os.makedirs(tempdir)
 
     # Remove contigs below the length threshold.
-    if args.length > 0:
-        print("\nFiltering out contigs less than " + str(args.length) + " bp... ", end="")
+    if int(args.length) > 0:
+        print("Filtering out contigs less than " + str(args.length) + " bp... ", end="")
         sys.stdout.flush()
         contigs1 = filterContigsByLength(contigs1, args.length)
         contigs2 = filterContigsByLength(contigs2, args.length)
-        print("done\n")
-        print("Filtered assembly 1: " + str(len(contigs1)) + " contigs, " + str(getTotalContigLength(contigs1)) + " bp")
-        print("Filtered assembly 2: " + str(len(contigs2)) + " contigs, " + str(getTotalContigLength(contigs2)) + " bp\n")
+        print("done")
+        print("   Filtered assembly 1: " + str(len(contigs1)) + " contigs, " + str(getTotalContigLength(contigs1)) + " bp")
+        print("   Filtered assembly 2: " + str(len(contigs2)) + " contigs, " + str(getTotalContigLength(contigs2)) + " bp\n")
 
     # Remove contigs outside the relative read depth threshold.
-    if args.minreaddepth > 0.0 or args.maxreaddepth > 0.0:
-        print("\nFiltering out contigs with a relative read depth less than " + str(args.minreaddepth) + " or greater than " + str(args.maxreaddepth) + "... ", end="")
+    if float(args.minreaddepth) > 0.0 or float(args.maxreaddepth) > 0.0:
+        print("Filtering out contigs with a relative read depth less than " + str(args.minreaddepth) + " or greater than " + str(args.maxreaddepth) + "... ", end="")
         sys.stdout.flush()
         contigs1 = filterContigsByReadDepth(contigs1, float(args.minreaddepth) * contigs1MedianReadDepth, float(args.maxreaddepth) * contigs1MedianReadDepth)
         contigs2 = filterContigsByReadDepth(contigs2, float(args.minreaddepth) * contigs2MedianReadDepth, float(args.maxreaddepth) * contigs2MedianReadDepth)
-        print("done\n")
-        print("Filtered assembly 1: " + str(len(contigs1)) + " contigs, " + str(getTotalContigLength(contigs1)) + " bp")
-        print("Filtered assembly 2: " + str(len(contigs2)) + " contigs, " + str(getTotalContigLength(contigs2)) + " bp\n")
+        print("done")
+        print("   Filtered assembly 1: " + str(len(contigs1)) + " contigs, " + str(getTotalContigLength(contigs1)) + " bp")
+        print("   Filtered assembly 2: " + str(len(contigs2)) + " contigs, " + str(getTotalContigLength(contigs2)) + " bp\n")
 
     # Save the reduced contig sets to file.
     saveContigsToFile(contigs1, tempdir + "/contigs1.fasta")
     saveContigsToFile(contigs2, tempdir + "/contigs2.fasta")
 
     # Build a BLAST database using the first assembly.
-    print("\nBuilding BLAST database... ", end="")
+    print("Building BLAST database... ", end="")
     sys.stdout.flush()
     makeblastdbCommand = ["makeblastdb", "-dbtype", "nucl", "-in", tempdir + "/contigs1.fasta"]
     p = subprocess.Popen(makeblastdbCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
