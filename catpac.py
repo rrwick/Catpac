@@ -155,7 +155,7 @@ def getArguments():
     parser.add_argument('assembly2', help='The second set of assembled contigs')
     parser.add_argument('out1', help='The filename for the first set of paired contigs')
     parser.add_argument('out2', help='The filename for the second set of paired contigs')
-    parser.add_argument('-l', '--length', action='store', help='Minimum alignment length', default=0)
+    parser.add_argument('-l', '--length', action='store', help='Minimum alignment length', default=100)
     parser.add_argument('-i', '--identity', action='store', help='Minimum alignment percent identity', default=99.0)
     parser.add_argument('-o', '--maxoverlap', action='store', help='Maximum overlap between alignments', default=51)
     parser.add_argument('-n', '--minreaddepth', action='store', help='Minimum contig read depth relative to median', default=0.5)
