@@ -48,12 +48,10 @@ def main():
 
     print("done\n")
     print("Loaded assembly 1: ")
-    print("      " + str(len(contigs1)) + " contigs")
-    print("      " + str(contigs1TotalLength) + " bp")
+    print("      " + str(len(contigs1)) + " contigs, " + str(contigs1TotalLength) + " bp")
     print("      median read depth (by base): " + str(contigs1MedianReadDepth))
     print("\nLoaded assembly 2: ")
-    print("      " + str(len(contigs2)) + " contigs")
-    print("      " + str(contigs2TotalLength) + " bp")
+    print("      " + str(len(contigs2)) + " contigs, " + str(contigs2TotalLength) + " bp")
     print("      median read depth (by base): " + str(contigs2MedianReadDepth) + "\n")
 
     # Make a temporary directory for the alignment files.
@@ -144,8 +142,7 @@ def main():
     # Print a final message.
     endTime = datetime.datetime.now()
     duration = endTime - startTime
-    print('Finished!')
-    print('Total time to complete:', convertTimeDeltaToReadableString(duration))
+    print('Finished! Total time to complete:', convertTimeDeltaToReadableString(duration))
 
 
 
