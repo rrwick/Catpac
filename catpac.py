@@ -54,28 +54,39 @@ def main():
     print("\nLoaded assembly 2: ")
     print("      " + str(len(contigs2)) + " contigs")
     print("      " + str(contigs2TotalLength) + " bp")
-    print("      median read depth (by base): " + str(contigs2MedianReadDepth))
-
-    # Remove contigs below the length threshold.
-    print("\nFiltering out contigs less than " + str(args.length) + " bp... ", end="")
-    sys.stdout.flush()
-    contigs1 = filterContigsByLength(contigs1, args.length)
-    contigs2 = filterContigsByLength(contigs2, args.length)
+    print("      median read depth (by base): " + str(contigs2MedianReadDepth) + "\n")
 
     # Make a temporary directory for the alignment files.
     tempdir = os.getcwd() + '/temp'
     if not os.path.exists(tempdir):
         os.makedirs(tempdir)
 
+    # Remove contigs below the length threshold.
+    if args.length > 0:
+        print("\nFiltering out contigs less than " + str(args.length) + " bp... ", end="")
+        sys.stdout.flush()
+        contigs1 = filterContigsByLength(contigs1, args.length)
+        contigs2 = filterContigsByLength(contigs2, args.length)
+        print("done\n")
+        print("Filtered assembly 1: " + str(len(contigs1)) + " contigs, " + str(getTotalContigLength(contigs1)) + " bp")
+        print("Filtered assembly 2: " + str(len(contigs2)) + " contigs, " + str(getTotalContigLength(contigs2)) + " bp\n")
+
+    # Remove contigs outside the relative read depth threshold.
+    if args.minreaddepth > 0.0 or args.maxreaddepth > 0.0:
+        print("\nFiltering out contigs with a relative read depth less than " + str(args.minreaddepth) + " or greater than " + str(args.maxreaddepth) + "... ", end="")
+        sys.stdout.flush()
+        contigs1 = filterContigsByReadDepth(contigs1, args.minreaddepth * contigs1MedianReadDepth, args.maxreaddepth * contigs1MedianReadDepth)
+        contigs2 = filterContigsByReadDepth(contigs2, args.minreaddepth * contigs2MedianReadDepth, args.maxreaddepth * contigs2MedianReadDepth)
+        print("done\n")
+        print("Filtered assembly 1: " + str(len(contigs1)) + " contigs, " + str(getTotalContigLength(contigs1)) + " bp")
+        print("Filtered assembly 2: " + str(len(contigs2)) + " contigs, " + str(getTotalContigLength(contigs2)) + " bp\n")
+
     # Save the reduced contig sets to file.
     saveContigsToFile(contigs1, tempdir + "/contigs1.fasta")
     saveContigsToFile(contigs2, tempdir + "/contigs2.fasta")
-    print("done\n")
-    print("Filtered assembly 1: " + str(len(contigs1)) + " contigs, " + str(getTotalContigLength(contigs1)) + " bp")
-    print("Filtered assembly 2: " + str(len(contigs2)) + " contigs, " + str(getTotalContigLength(contigs2)) + " bp\n")
 
     # Build a BLAST database using the first assembly.
-    print("Building BLAST database... ", end="")
+    print("\nBuilding BLAST database... ", end="")
     sys.stdout.flush()
     makeblastdbCommand = ["makeblastdb", "-dbtype", "nucl", "-in", tempdir + "/contigs1.fasta"]
     p = subprocess.Popen(makeblastdbCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -147,9 +158,11 @@ def getArguments():
     parser.add_argument('assembly2', help='The second set of assembled contigs')
     parser.add_argument('out1', help='The filename for the first set of paired contigs')
     parser.add_argument('out2', help='The filename for the second set of paired contigs')
-    parser.add_argument('-l', '--length', action='store', help='Minimum alignment length', default=1000)
+    parser.add_argument('-l', '--length', action='store', help='Minimum alignment length', default=0)
     parser.add_argument('-i', '--identity', action='store', help='Minimum alignment percent identity', default=99.0)
     parser.add_argument('-o', '--maxoverlap', action='store', help='Maximum overlap between alignments', default=51)
+    parser.add_argument('-n', '--minreaddepth', action='store', help='Minimum contig read depth relative to median', default=0.5)
+    parser.add_argument('-x', '--maxreaddepth', action='store', help='Maximum contig read depth relative to median', default=1.5)
 
     return parser.parse_args()
 
@@ -211,6 +224,19 @@ def filterContigsByLength(contigs, lengthThreshold):
 
     return filteredContigs
 
+
+
+# This function takes a list of Contig objects and returns another list which
+# only contains the contigs within the given read depth range.
+def filterContigsByReadDepth(contigs, minReadDepth, maxReadDepth):
+
+    filteredContigs = []
+
+    for contig in contigs:
+        if contig.depth >= minReadDepth and contig.depth <= maxReadDepth:
+            filteredContigs.append(contig)
+
+    return filteredContigs
 
 
 
