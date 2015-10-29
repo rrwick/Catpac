@@ -89,7 +89,7 @@ def main():
     makeblastdbCommand = ["makeblastdb", "-dbtype", "nucl", "-in", tempdir + "/contigs1.fasta"]
     p = subprocess.Popen(makeblastdbCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
-    print("done\n")
+    print("done")
 
     # BLAST the second assembly against the first.
     print("Running BLAST search... ", end="")
