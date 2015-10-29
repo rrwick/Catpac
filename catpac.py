@@ -43,12 +43,21 @@ def main():
     contigs2 = loadContigs(args.assembly2)
     contigs1TotalLength = getTotalContigLength(contigs1)
     contigs2TotalLength = getTotalContigLength(contigs2)
+    contigs1MedianReadDepth = getMedianReadDepthByBase(contigs1)
+    contigs2MedianReadDepth = getMedianReadDepthByBase(contigs2)
+
     print("done\n")
-    print("Loaded assembly 1: " + str(len(contigs1)) + " contigs, " + str(contigs1TotalLength) + " bp")
-    print("Loaded assembly 2: " + str(len(contigs2)) + " contigs, " + str(contigs2TotalLength) + " bp\n")
+    print("Loaded assembly 1: ")
+    print("      " + str(len(contigs1)) + " contigs")
+    print("      " + str(contigs1TotalLength) + " bp")
+    print("      median read depth (by base): " + str(contigs1MedianReadDepth))
+    print("\nLoaded assembly 2: ")
+    print("      " + str(len(contigs2)) + " contigs")
+    print("      " + str(contigs2TotalLength) + " bp")
+    print("      median read depth (by base): " + str(contigs2MedianReadDepth))
 
     # Remove contigs below the length threshold.
-    print("Filtering out contigs less than " + str(args.length) + " bp... ", end="")
+    print("\nFiltering out contigs less than " + str(args.length) + " bp... ", end="")
     sys.stdout.flush()
     contigs1 = filterContigsByLength(contigs1, args.length)
     contigs2 = filterContigsByLength(contigs2, args.length)
@@ -204,57 +213,6 @@ def filterContigsByLength(contigs, lengthThreshold):
 
 
 
-# This class holds a contig: its name, sequence and length.
-class Contig:
-    def __init__(self, name, sequence):
-        self.name = name
-        self.sequence = sequence
-        self.length = len(sequence)
-
-    def __lt__(self, other):
-        return self.length < other.length
-
-
-# This class holds a BLAST alignment
-class BlastAlignment:
-    def __init__(self, blastString):
-        blastStringParts = blastString.split("\t")
-
-        self.length = int(blastStringParts[0])
-        self.percentIdentity = float(blastStringParts[1])
-
-        self.contig1Name = blastStringParts[2]
-        self.contig1Start = int(blastStringParts[3])
-        self.contig1End = int(blastStringParts[4])
-        self.contig1Sequence = blastStringParts[5].replace("-","")
-
-        self.contig2Name = blastStringParts[6]
-        self.contig2Start = int(blastStringParts[7])
-        self.contig2End = int(blastStringParts[8])
-        self.contig2Sequence = blastStringParts[9].replace("-","")
-
-        self.mismatches = int(blastStringParts[10])
-        self.gaps = int(blastStringParts[11])
-        self.gapopens = int(blastStringParts[12])
-
-    
-    def __eq__(self, other):
-        return (self.contig1Name == other.contig1Name and
-            self.contig1Start == other.contig1Start and
-            self.contig1End == other.contig1End and
-            self.contig2Name == other.contig2Name and
-            self.contig2Start == other.contig2Start and
-            self.contig2End == other.contig2End)
-
-    def __str__(self):
-        return self.contig1Name + ": " + str(self.contig1Start) + " to " + str(self.contig1End) + ", " + \
-               self.contig2Name + ": " + str(self.contig2Start) + " to " + str(self.contig2End)
-
-    def __repr__(self):
-        return self.contig1Name + "_" + str(self.contig1Start) + "_" + str(self.contig1End) + "_" + \
-               self.contig2Name + "_" + str(self.contig2Start) + "_" + str(self.contig2End)
-
-
 
 def convertTimeDeltaToReadableString(timeDelta):
     seconds = timeDelta.seconds
@@ -278,7 +236,7 @@ def convertTimeDeltaToReadableString(timeDelta):
 def saveContigsToFile(contigList, filename):
     outfile = open(filename, 'w')
     for contig in contigList:
-        outfile.write('>' + contig.name + '\n')
+        outfile.write('>' + contig.fullname + '\n')
         sequence = contig.sequence
         while len(sequence) > 60:
             outfile.write(sequence[0:60] + '\n')
@@ -453,6 +411,86 @@ def alignmentPassesOverlapFilter(alignment, overlappingAlignmentPairs):
             return False
 
     return True
+
+
+
+# This function finds the median read depth by base.
+def getMedianReadDepthByBase(contigs):
+    readDepths = []
+    for contig in contigs:
+        for i in range(contig.length):
+            readDepths.append(contig.depth)
+    readDepths.sort()
+    baseCount = len(readDepths)
+    index = (baseCount - 1) // 2
+
+    if (baseCount % 2):
+        return readDepths[index]
+    else:
+        return (readDepths[index] + sortedLst[index + 1]) / 2.0
+
+
+
+
+# This class holds a contig: its name, sequence and length.
+class Contig:
+    def __init__(self, name, sequence):
+        self.fullname = name
+        nameParts = name.split("_")
+        self.number = nameParts[1]
+        self.depth = float(nameParts[5])
+        self.sequence = sequence
+        self.length = len(sequence)
+
+    def __lt__(self, other):
+        return self.length < other.length
+
+    def __str__(self):
+        return self.fullname
+
+    def __repr__(self):
+        return self.fullname
+
+
+
+# This class holds a BLAST alignment
+class BlastAlignment:
+    def __init__(self, blastString):
+        blastStringParts = blastString.split("\t")
+
+        self.length = int(blastStringParts[0])
+        self.percentIdentity = float(blastStringParts[1])
+
+        self.contig1Name = blastStringParts[2]
+        self.contig1Start = int(blastStringParts[3])
+        self.contig1End = int(blastStringParts[4])
+        self.contig1Sequence = blastStringParts[5].replace("-","")
+
+        self.contig2Name = blastStringParts[6]
+        self.contig2Start = int(blastStringParts[7])
+        self.contig2End = int(blastStringParts[8])
+        self.contig2Sequence = blastStringParts[9].replace("-","")
+
+        self.mismatches = int(blastStringParts[10])
+        self.gaps = int(blastStringParts[11])
+        self.gapopens = int(blastStringParts[12])
+
+    
+    def __eq__(self, other):
+        return (self.contig1Name == other.contig1Name and
+            self.contig1Start == other.contig1Start and
+            self.contig1End == other.contig1End and
+            self.contig2Name == other.contig2Name and
+            self.contig2Start == other.contig2Start and
+            self.contig2End == other.contig2End)
+
+    def __str__(self):
+        return self.contig1Name + ": " + str(self.contig1Start) + " to " + str(self.contig1End) + ", " + \
+               self.contig2Name + ": " + str(self.contig2Start) + " to " + str(self.contig2End)
+
+    def __repr__(self):
+        return self.contig1Name + "_" + str(self.contig1Start) + "_" + str(self.contig1End) + "_" + \
+               self.contig2Name + "_" + str(self.contig2Start) + "_" + str(self.contig2End)
 
 
 
