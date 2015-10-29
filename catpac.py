@@ -76,7 +76,7 @@ def main():
     # BLAST the second assembly against the first.
     print("Running BLAST search... ", end="")
     sys.stdout.flush()
-    blastnCommand = ["blastn", "-db", tempdir + "/contigs1.fasta", "-query", tempdir + "/contigs2.fasta", "-outfmt", "6 length pident qseqid qstart qend qseq sseqid sstart send sseq mismatch gaps"]
+    blastnCommand = ["blastn", "-db", tempdir + "/contigs1.fasta", "-query", tempdir + "/contigs2.fasta", "-outfmt", "6 length pident qseqid qstart qend qseq sseqid sstart send sseq mismatch gaps gapopen"]
     p = subprocess.Popen(blastnCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
 
@@ -98,9 +98,10 @@ def main():
     print("BLAST alignments after overlap filtering: ", len(blastAlignments))
 
     # Display some summary information about the alignments.
-    mismatches, gaps, length = totalMismatchesGapsAndLength(blastAlignments)
+    mismatches, gaps, gapopens, length = totalMismatchesGapsAndLength(blastAlignments)
     print("\nTotal alignment mismatches:", mismatches)
-    print("Total alignment gaps:      ", gaps)
+    print("Total alignment gap bases: ", gaps)
+    print("Total alignment gap opens: ", gapopens)
 
     print("\nTotal alignment length:", length)
     contigs1Percent = 100.0 * length / contigs1TotalLength
@@ -234,6 +235,8 @@ class BlastAlignment:
 
         self.mismatches = int(blastStringParts[10])
         self.gaps = int(blastStringParts[11])
+        self.gapopens = int(blastStringParts[12])
+
     
     def __eq__(self, other):
         return (self.contig1Name == other.contig1Name and
@@ -349,14 +352,16 @@ def totalMismatchesGapsAndLength(alignments):
 
     mismatches = 0
     gaps = 0
+    gapopens = 0
     length = 0
 
     for alignment in alignments:
         mismatches += alignment.mismatches
         gaps += alignment.gaps
+        gapopens += alignment.gapopens
         length += alignment.length
 
-    return (mismatches, gaps, length)
+    return (mismatches, gaps, gapopens, length)
 
 
 
