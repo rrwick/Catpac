@@ -45,7 +45,6 @@ def main():
     contigs2TotalLength = getTotalContigLength(contigs2)
     contigs1MedianReadDepth = getMedianReadDepthByBase(contigs1)
     contigs2MedianReadDepth = getMedianReadDepthByBase(contigs2)
-
     print("done\n")
     print("Loaded assembly 1: ")
     print("   " + str(len(contigs1)) + " contigs, " + str(contigs1TotalLength) + " bp")
@@ -53,6 +52,15 @@ def main():
     print("\nLoaded assembly 2: ")
     print("   " + str(len(contigs2)) + " contigs, " + str(contigs2TotalLength) + " bp")
     print("   median read depth (by base): " + str(contigs2MedianReadDepth) + "\n")
+
+    # Build dictionaries for the contigs, so we can later use a contig's name
+    # to get the rest of the contig's details.
+    contigs1Dict = {}
+    for contig in contigs1:
+        contigs1Dict[contig.fullname] = contig
+    contigs2Dict = {}
+    for contig in contigs2:
+        contigs2Dict[contig.fullname] = contig
 
     # Make a temporary directory for the alignment files.
     tempdir = os.getcwd() + '/temp'
@@ -94,7 +102,7 @@ def main():
     # BLAST the second assembly against the first.
     print("Running BLAST search... ", end="")
     sys.stdout.flush()
-    blastnCommand = ["blastn", "-db", tempdir + "/contigs1.fasta", "-query", tempdir + "/contigs2.fasta", "-outfmt", "6 length pident qseqid qstart qend qseq sseqid sstart send sseq mismatch gaps gapopen"]
+    blastnCommand = ["blastn", "-db", tempdir + "/contigs1.fasta", "-query", tempdir + "/contigs2.fasta", "-outfmt", "6 length pident sseqid sstart send sseq qseqid qstart qend qseq mismatch gaps gapopen"]
     p = subprocess.Popen(blastnCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
 
@@ -102,7 +110,7 @@ def main():
     alignmentStrings = out.splitlines()
     blastAlignments = []
     for alignmentString in alignmentStrings:
-        alignment = BlastAlignment(alignmentString)
+        alignment = BlastAlignment(alignmentString, contigs1Dict, contigs2Dict)
         blastAlignments.append(alignment)
     print("done\n")
 
@@ -286,11 +294,11 @@ def saveAlignmentsToFastaFile(alignments, filename, contig1):
 
         alignmentName = ""
         if contig1:
-            alignmentName += alignment.contig1Name
+            alignmentName += alignment.contig1.fullname
             alignmentName += "_" + str(alignment.contig1Start)
             alignmentName += "_to_" + str(alignment.contig1End)
         else:
-            alignmentName += alignment.contig2Name
+            alignmentName += alignment.contig2.fullname
             alignmentName += "_" + str(alignment.contig2Start)
             alignmentName += "_to_" + str(alignment.contig2End)
 
@@ -339,7 +347,7 @@ def saveVariantsToCsvFile(alignments, filename):
         outfile.write(",")
         outfile.write(variant.contig2Sequence)
         outfile.write(",")
-        outfile.write(variant.contig1Name)
+        outfile.write(variant.contig1.shortname)
         outfile.write(",")
         outfile.write(str(variant.contig1Position))
         outfile.write(",")
@@ -349,7 +357,7 @@ def saveVariantsToCsvFile(alignments, filename):
         outfile.write(",")
         outfile.write(str(variant.contig1DepthRobustZScore))
         outfile.write(",")
-        outfile.write(variant.contig2Name)
+        outfile.write(variant.contig2.shortname)
         outfile.write(",")
         outfile.write(str(variant.contig2Position))
         outfile.write(",")
@@ -436,7 +444,7 @@ def doesAlignmentPairOverlap(alignmentPair, maxOverlap):
     if alignment1 == alignment2:
         return False
 
-    if alignment1.contig1Name == alignment2.contig1Name:
+    if alignment1.contig1 == alignment2.contig1:
 
         a1c1Start = alignment1.contig1Start
         a1c1End = alignment1.contig1End
@@ -449,7 +457,7 @@ def doesAlignmentPairOverlap(alignmentPair, maxOverlap):
         if c1OverlapLength > maxOverlap:
             return True
 
-    if alignment1.contig2Name == alignment2.contig2Name:
+    if alignment1.contig2 == alignment2.contig2:
 
         a1c2Start = alignment1.contig2Start
         a1c2End = alignment1.contig2End
@@ -517,6 +525,18 @@ def getMedianReadDepthByBase(contigs):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 # This class holds a contig: its name, sequence and length.
 class Contig:
     def __init__(self, name, sequence):
@@ -537,21 +557,35 @@ class Contig:
     def __repr__(self):
         return self.fullname
 
+    def __eq__(self, other):
+        return (self.fullname == other.fullname)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # This class holds a variant between two sequences.  It can be either a SNP or a small indel.
 class Variant:
-    def __init__(self, variantType, contig1Name, contig1Position, contig1Sequence, contig2Name, contig2Position, contig2Sequence):
+    def __init__(self, variantType, contig1, contig1Position, contig1Sequence, contig2, contig2Position, contig2Sequence):
         self.variantType = variantType
 
-        self.contig1Name = contig1Name
+        self.contig1 = contig1
         self.contig1Position = contig1Position
         self.contig1Sequence = contig1Sequence
         self.contig1Depth = 0.0 # TEMP
         self.contig1RelativeDepth = 0.0 # TEMP
         self.contig1DepthRobustZScore = 0.0 # TEMP
 
-        self.contig2Name = contig2Name
+        self.contig2 = contig2
         self.contig2Position = contig2Position
         self.contig2Sequence = contig2Sequence
         self.contig2Depth = 0.0 # TEMP
@@ -560,20 +594,38 @@ class Variant:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # This class holds a BLAST alignment
 class BlastAlignment:
-    def __init__(self, blastString):
+    def __init__(self, blastString, contigs1Dict, contigs2Dict):
         blastStringParts = blastString.split("\t")
 
         self.length = int(blastStringParts[0])
         self.percentIdentity = float(blastStringParts[1])
 
-        self.contig1Name = blastStringParts[2]
+        contig1Name = blastStringParts[2]
+        self.contig1 = contigs1Dict[contig1Name]
+
         self.contig1Start = int(blastStringParts[3])
         self.contig1End = int(blastStringParts[4])
         self.contig1Sequence = blastStringParts[5]
 
-        self.contig2Name = blastStringParts[6]
+        contig2Name = blastStringParts[6]
+        self.contig2 = contigs2Dict[contig2Name]
+
         self.contig2Start = int(blastStringParts[7])
         self.contig2End = int(blastStringParts[8])
         self.contig2Sequence = blastStringParts[9]
@@ -583,10 +635,10 @@ class BlastAlignment:
         self.gapopens = int(blastStringParts[12])
     
     def __eq__(self, other):
-        return (self.contig1Name == other.contig1Name and
+        return (self.contig1 == other.contig1 and
             self.contig1Start == other.contig1Start and
             self.contig1End == other.contig1End and
-            self.contig2Name == other.contig2Name and
+            self.contig2 == other.contig2 and
             self.contig2Start == other.contig2Start and
             self.contig2End == other.contig2End)
 
@@ -610,10 +662,10 @@ class BlastAlignment:
 
             if base1 != base2:
                 if base1 != "-" and base2 != "-":
-                    variant = Variant("SNP", self.contig1Name, i, base1, self.contig2Name, i, base2)
+                    variant = Variant("SNP", self.contig1, i, base1, self.contig2, i, base2)
                     singleNucleotideVariants.append(variant)
                 else:
-                    variant = Variant("indel", self.contig1Name, i, base1, self.contig2Name, i, base2)
+                    variant = Variant("indel", self.contig1, i, base1, self.contig2, i, base2)
                     singleNucleotideVariants.append(variant)
 
         # Now we want to collapse multi-base indels into single variants.
@@ -631,7 +683,7 @@ class BlastAlignment:
             # the indel in progress (if there is one).
             if singleNucleotideVariant.variantType == "SNP":
                 if indelInProgress:
-                    variant = Variant("indel", self.contig1Name, indelContig1Position, indelContig1Sequence, self.contig2Name, indelContig2Position, indelContig2Sequence)
+                    variant = Variant("indel", self.contig1, indelContig1Position, indelContig1Sequence, self.contig2, indelContig2Position, indelContig2Sequence)
                     variants.append(variant)
 
                     indelInProgress = False
@@ -663,7 +715,7 @@ class BlastAlignment:
                     # If the current indel does not match the one in progress,
                     # finish the current one and start a new one.
                     else:
-                        variant = Variant("indel", self.contig1Name, indelContig1Position, indelContig1Sequence, self.contig2Name, indelContig2Position, indelContig2Sequence)
+                        variant = Variant("indel", self.contig1, indelContig1Position, indelContig1Sequence, self.contig2, indelContig2Position, indelContig2Sequence)
                         variants.append(variant)
 
                         indelInProgress = True
@@ -675,10 +727,19 @@ class BlastAlignment:
         # Check to see if an indel is in progress at the end, and save it if
         # so.
         if indelInProgress:
-            variant = Variant("indel", self.contig1Name, indelContig1Position, indelContig1Sequence, self.contig2Name, indelContig2Position, indelContig2Sequence)
+            variant = Variant("indel", self.contig1, indelContig1Position, indelContig1Sequence, self.contig2, indelContig2Position, indelContig2Sequence)
             variants.append(variant)
 
         return variants
+
+
+
+
+
+
+
+
+
 
 
 
