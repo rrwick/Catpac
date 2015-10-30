@@ -126,6 +126,13 @@ def main():
     print("  " + "{0:.3f}".format(contigs1Percent) + "% of assembly 1")
     print("  " + "{0:.3f}".format(contigs2Percent) + "% of assembly 2\n ")
 
+    # Save the SNP table to file.
+    if args.variants != "":
+        print("Saving variants to file... ", end="")
+        sys.stdout.flush()
+        saveVariantsToCsvFile(blastAlignments, args.variants)
+        print("done")
+
     # Save the alignments to file.
     if args.alignment1 != "" or args.alignment2 != "":
         print("Saving alignments to file... ", end="")
@@ -134,13 +141,6 @@ def main():
             saveAlignmentsToFastaFile(blastAlignments, args.alignment1, True)
         if args.alignment2 != "":
             saveAlignmentsToFastaFile(blastAlignments, args.alignment2, False)
-        print("done")
-
-    # Save the SNP table to file.
-    if args.variants != "":
-        print("Saving variants to file... ", end="")
-        sys.stdout.flush()
-        saveVariantsToCsvFile(blastAlignments, args.variants)
         print("done")
 
     # Delete the temporary files.
@@ -298,9 +298,9 @@ def saveAlignmentsToFastaFile(alignments, filename, contig1):
 
         sequence = ""
         if contig1:
-            sequence = alignment.contig1Sequence
+            sequence = alignment.contig1Sequence.replace("-","")
         else:
-            sequence = alignment.contig2Sequence
+            sequence = alignment.contig2Sequence.replace("-","")
 
         while len(sequence) > 60:
             outfile.write(sequence[0:60] + '\n')
@@ -311,6 +311,54 @@ def saveAlignmentsToFastaFile(alignments, filename, contig1):
 
 def saveVariantsToCsvFile(alignments, filename):
     outfile = open(filename, 'w')
+    
+    # Create the CSV header line:
+    outfile.write("Type,")
+    outfile.write("Contig 1 sequence,")
+    outfile.write("Contig 2 sequence,")
+    outfile.write("Contig 1 name,")
+    outfile.write("Contig 1 position,")
+    outfile.write("Contig 1 depth,")
+    outfile.write("Contig 1 depth relative to median depth,")
+    outfile.write("Contig 1 depth robust z-score,")
+    outfile.write("Contig 2 name,")
+    outfile.write("Contig 2 position,")
+    outfile.write("Contig 2 depth,")
+    outfile.write("Contig 2 depth relative to median depth,")
+    outfile.write("Contig 2 depth robust z-score")
+    outfile.write("\n")
+
+    variants = []
+    for alignment in alignments:
+        variants.extend(alignment.getVariants())
+
+    for variant in variants:
+        outfile.write(variant.variantType)
+        outfile.write(",")
+        outfile.write(variant.contig1Sequence)
+        outfile.write(",")
+        outfile.write(variant.contig2Sequence)
+        outfile.write(",")
+        outfile.write(variant.contig1Name)
+        outfile.write(",")
+        outfile.write(str(variant.contig1Position))
+        outfile.write(",")
+        outfile.write(str(variant.contig1Depth))
+        outfile.write(",")
+        outfile.write(str(variant.contig1RelativeDepth))
+        outfile.write(",")
+        outfile.write(str(variant.contig1DepthRobustZScore))
+        outfile.write(",")
+        outfile.write(variant.contig2Name)
+        outfile.write(",")
+        outfile.write(str(variant.contig2Position))
+        outfile.write(",")
+        outfile.write(str(variant.contig2Depth))
+        outfile.write(",")
+        outfile.write(str(variant.contig2RelativeDepth))
+        outfile.write(",")
+        outfile.write(str(variant.contig2DepthRobustZScore))
+        outfile.write("\n")
 
 
 
@@ -474,7 +522,8 @@ class Contig:
     def __init__(self, name, sequence):
         self.fullname = name
         nameParts = name.split("_")
-        self.number = nameParts[1]
+        self.shortname = nameParts[0] + "_" + nameParts[1]
+        self.number = int(nameParts[1])
         self.depth = float(nameParts[5])
         self.sequence = sequence
         self.length = len(sequence)
@@ -490,6 +539,27 @@ class Contig:
 
 
 
+# This class holds a variant between two sequences.  It can be either a SNP or a small indel.
+class Variant:
+    def __init__(self, variantType, contig1Name, contig1Position, contig1Sequence, contig2Name, contig2Position, contig2Sequence):
+        self.variantType = variantType
+
+        self.contig1Name = contig1Name
+        self.contig1Position = contig1Position
+        self.contig1Sequence = contig1Sequence
+        self.contig1Depth = 0.0 # TEMP
+        self.contig1RelativeDepth = 0.0 # TEMP
+        self.contig1DepthRobustZScore = 0.0 # TEMP
+
+        self.contig2Name = contig2Name
+        self.contig2Position = contig2Position
+        self.contig2Sequence = contig2Sequence
+        self.contig2Depth = 0.0 # TEMP
+        self.contig2RelativeDepth = 0.0 # TEMP
+        self.contig2DepthRobustZScore = 0.0 # TEMP
+
+
+
 # This class holds a BLAST alignment
 class BlastAlignment:
     def __init__(self, blastString):
@@ -501,17 +571,16 @@ class BlastAlignment:
         self.contig1Name = blastStringParts[2]
         self.contig1Start = int(blastStringParts[3])
         self.contig1End = int(blastStringParts[4])
-        self.contig1Sequence = blastStringParts[5].replace("-","")
+        self.contig1Sequence = blastStringParts[5]
 
         self.contig2Name = blastStringParts[6]
         self.contig2Start = int(blastStringParts[7])
         self.contig2End = int(blastStringParts[8])
-        self.contig2Sequence = blastStringParts[9].replace("-","")
+        self.contig2Sequence = blastStringParts[9]
 
         self.mismatches = int(blastStringParts[10])
         self.gaps = int(blastStringParts[11])
         self.gapopens = int(blastStringParts[12])
-
     
     def __eq__(self, other):
         return (self.contig1Name == other.contig1Name and
@@ -529,19 +598,90 @@ class BlastAlignment:
         return self.contig1Name + "_" + str(self.contig1Start) + "_" + str(self.contig1End) + "_" + \
                self.contig2Name + "_" + str(self.contig2Start) + "_" + str(self.contig2End)
 
+    # This function returns a list of all the variants within the alignment.
+    def getVariants(self):
+
+        # First loop through the alignment, pulling out all variants on a
+        # base-by-base basis.
+        singleNucleotideVariants = []
+        for i in range(len(self.contig1Sequence)):
+            base1 = self.contig1Sequence[i]
+            base2 = self.contig2Sequence[i]
+
+            if base1 != base2:
+                if base1 != "-" and base2 != "-":
+                    variant = Variant("SNP", self.contig1Name, i, base1, self.contig2Name, i, base2)
+                    singleNucleotideVariants.append(variant)
+                else:
+                    variant = Variant("indel", self.contig1Name, i, base1, self.contig2Name, i, base2)
+                    singleNucleotideVariants.append(variant)
+
+        # Now we want to collapse multi-base indels into single variants.
+        variants = []
+
+        indelInProgress = False
+        indelContig1Sequence = ""
+        indelContig2Sequence = ""
+        indelContig1Position = 0
+        indelContig2Position = 0
+
+        for singleNucleotideVariant in singleNucleotideVariants:
+
+            # If the variant is a SNP, then save the SNP variant and complete
+            # the indel in progress (if there is one).
+            if singleNucleotideVariant.variantType == "SNP":
+                if indelInProgress:
+                    variant = Variant("indel", self.contig1Name, indelContig1Position, indelContig1Sequence, self.contig2Name, indelContig2Position, indelContig2Sequence)
+                    variants.append(variant)
+
+                    indelInProgress = False
+                    indelContig1Sequence = ""
+                    indelContig2Sequence = ""
+                    indelContig1Position = 0
+                    indelContig2Position = 0
+
+                variants.append(singleNucleotideVariant)
+
+            # If the variant is an indel, either start a new indel in progress
+            # or continue an existing indel, as appropriate.
+            else:
+                if not indelInProgress:
+                    indelInProgress = True
+                    indelContig1Sequence = singleNucleotideVariant.contig1Sequence
+                    indelContig2Sequence = singleNucleotideVariant.contig2Sequence
+                    indelContig1Position = singleNucleotideVariant.contig1Position
+                    indelContig2Position = singleNucleotideVariant.contig2Position
+                
+                # If an indel is in progress...
+                else:
+                    # If the current indel matches the one in progress, extend
+                    # the one in progress.
+                    if (indelContig1Sequence[0] == '-' and singleNucleotideVariant.contig1Sequence == '-') or (indelContig2Sequence[0] == '-' and singleNucleotideVariant.contig2Sequence == '-'):
+                        indelContig1Sequence += singleNucleotideVariant.contig1Sequence
+                        indelContig2Sequence += singleNucleotideVariant.contig2Sequence
+
+                    # If the current indel does not match the one in progress,
+                    # finish the current one and start a new one.
+                    else:
+                        variant = Variant("indel", self.contig1Name, indelContig1Position, indelContig1Sequence, self.contig2Name, indelContig2Position, indelContig2Sequence)
+                        variants.append(variant)
+
+                        indelInProgress = True
+                        indelContig1Sequence = singleNucleotideVariant.contig1Sequence
+                        indelContig2Sequence = singleNucleotideVariant.contig2Sequence
+                        indelContig1Position = singleNucleotideVariant.contig1Position
+                        indelContig2Position = singleNucleotideVariant.contig2Position
+
+        # Check to see if an indel is in progress at the end, and save it if
+        # so.
+        if indelInProgress:
+            variant = Variant("indel", self.contig1Name, indelContig1Position, indelContig1Sequence, self.contig2Name, indelContig2Position, indelContig2Sequence)
+            variants.append(variant)
+
+        return variants
 
 
-class SNP:
-    def __init__(self, snpType, contig1Name, contig1Position, contig1Sequence, contig2Name, contig2Position, contig2Sequence):
-        self.snpType = snpType
 
-        self.contig1Name = contig1Name
-        self.contig1Position = contig1Position
-        self.contig1Sequence = contig1Sequence
-
-        self.contig2Name = contig2Name
-        self.contig2Position = contig2Position
-        self.contig2Sequence = contig2Sequence
 
 
 
