@@ -106,7 +106,7 @@ def main():
         blastAlignments.append(alignment)
     print("done\n")
 
-    # Filter the alignments for length and identity.
+    # Filter the alignments for length, identity and overlap.
     print("BLAST alignments before filtering:        ", len(blastAlignments))
     blastAlignments = filterBlastAlignmentsByLength(blastAlignments, int(args.length))
     print("BLAST alignments after length filtering:  ", len(blastAlignments))
@@ -120,20 +120,28 @@ def main():
     print("\nTotal alignment mismatches:", mismatches)
     print("Total alignment gap bases: ", gaps)
     print("Total alignment gap opens: ", gapopens)
-
     print("\nTotal alignment length:", length)
     contigs1Percent = 100.0 * length / contigs1TotalLength
     contigs2Percent = 100.0 * length / contigs2TotalLength
     print("  " + "{0:.3f}".format(contigs1Percent) + "% of assembly 1")
     print("  " + "{0:.3f}".format(contigs2Percent) + "% of assembly 2\n ")
 
+    # Save the alignments to file.
+    if args.alignment1 != "" or args.alignment2 != "":
+        print("Saving alignments to file... ", end="")
+        sys.stdout.flush()
+        if args.alignment1 != "":
+            saveAlignmentsToFastaFile(blastAlignments, args.alignment1, True)
+        if args.alignment2 != "":
+            saveAlignmentsToFastaFile(blastAlignments, args.alignment2, False)
+        print("done")
 
-    # Save the results to file
-    print("Saving alignments to file... ", end="")
-    sys.stdout.flush()
-    saveAlignmentsToFile(blastAlignments, args.out1, True)
-    saveAlignmentsToFile(blastAlignments, args.out2, False)
-    print("done\n")
+    # Save the SNP table to file.
+    if args.variants != "":
+        print("Saving variants to file... ", end="")
+        sys.stdout.flush()
+        saveVariantsToCsvFile(blastAlignments, args.variants)
+        print("done")
 
     # Delete the temporary files.
     if os.path.exists(tempdir):
@@ -142,7 +150,7 @@ def main():
     # Print a final message.
     endTime = datetime.datetime.now()
     duration = endTime - startTime
-    print('Finished! Total time to complete:', convertTimeDeltaToReadableString(duration))
+    print('\nFinished! Total time to complete:', convertTimeDeltaToReadableString(duration))
 
 
 
@@ -153,8 +161,9 @@ def getArguments():
     parser = argparse.ArgumentParser(description='Catpac: a Contig Alignment Tool for Pairwise Assembly Comparison')
     parser.add_argument('assembly1', help='The first set of assembled contigs')
     parser.add_argument('assembly2', help='The second set of assembled contigs')
-    parser.add_argument('out1', help='The filename for the first set of paired contigs')
-    parser.add_argument('out2', help='The filename for the second set of paired contigs')
+    parser.add_argument('-1', '--alignment1', action='store', help='Save the alignments for the first assembly to this FASTA file', default="")
+    parser.add_argument('-2', '--alignment2', action='store', help='Save the alignments for the second assembly to this FASTA file', default="")
+    parser.add_argument('-v', '--variants', action='store', help='Save a table of variants to this CSV file', default="")
     parser.add_argument('-l', '--length', action='store', help='Minimum alignment length', default=100)
     parser.add_argument('-i', '--identity', action='store', help='Minimum alignment percent identity', default=99.0)
     parser.add_argument('-o', '--maxoverlap', action='store', help='Maximum overlap between alignments', default=51)
@@ -270,10 +279,10 @@ def saveContigsToFile(contigList, filename):
 
 # If contig1 is True, then the alignments for the first set of contigs are
 # saved to file.  If False, the alignments for the second set are saved.
-def saveAlignmentsToFile(alignmentList, filename, contig1):
+def saveAlignmentsToFastaFile(alignments, filename, contig1):
     outfile = open(filename, 'w')
 
-    for alignment in alignmentList:
+    for alignment in alignments:
 
         alignmentName = ""
         if contig1:
@@ -297,6 +306,11 @@ def saveAlignmentsToFile(alignmentList, filename, contig1):
             outfile.write(sequence[0:60] + '\n')
             sequence = sequence[60:]
         outfile.write(sequence + '\n')
+
+
+
+def saveVariantsToCsvFile(alignments, filename):
+    outfile = open(filename, 'w')
 
 
 
@@ -514,6 +528,21 @@ class BlastAlignment:
     def __repr__(self):
         return self.contig1Name + "_" + str(self.contig1Start) + "_" + str(self.contig1End) + "_" + \
                self.contig2Name + "_" + str(self.contig2Start) + "_" + str(self.contig2End)
+
+
+
+class SNP:
+    def __init__(self, snpType, contig1Name, contig1Position, contig1Sequence, contig2Name, contig2Position, contig2Sequence):
+        self.snpType = snpType
+
+        self.contig1Name = contig1Name
+        self.contig1Position = contig1Position
+        self.contig1Sequence = contig1Sequence
+
+        self.contig2Name = contig2Name
+        self.contig2Position = contig2Position
+        self.contig2Sequence = contig2Sequence
+
 
 
 
