@@ -43,15 +43,19 @@ def main():
     contigs2 = loadContigs(args.assembly2)
     contigs1TotalLength = getTotalContigLength(contigs1)
     contigs2TotalLength = getTotalContigLength(contigs2)
-    contigs1MedianReadDepth = getMedianReadDepthByBase(contigs1)
-    contigs2MedianReadDepth = getMedianReadDepthByBase(contigs2)
+    contigs1MedianReadDepth, contigs1MedianAbsoluteDeviation = getMedianReadDepthByBaseAndMedianAbsoluteDeviation(contigs1)
+    contigs2MedianReadDepth, contigs2MedianAbsoluteDeviation = getMedianReadDepthByBaseAndMedianAbsoluteDeviation(contigs2)
+    calculateRelativeDepthAndZScore(contigs1, contigs1MedianReadDepth, contigs1MedianAbsoluteDeviation)
+    calculateRelativeDepthAndZScore(contigs2, contigs2MedianReadDepth, contigs2MedianAbsoluteDeviation)
     print("done\n")
     print("Loaded assembly 1: ")
     print("   " + str(len(contigs1)) + " contigs, " + str(contigs1TotalLength) + " bp")
     print("   median read depth (by base): " + str(contigs1MedianReadDepth))
+    print("   median absolute deviation:   " + str(contigs1MedianAbsoluteDeviation))
     print("\nLoaded assembly 2: ")
     print("   " + str(len(contigs2)) + " contigs, " + str(contigs2TotalLength) + " bp")
-    print("   median read depth (by base): " + str(contigs2MedianReadDepth) + "\n")
+    print("   median read depth (by base): " + str(contigs2MedianReadDepth))
+    print("   median absolute deviation:   " + str(contigs2MedianAbsoluteDeviation) + "\n")
 
     # Build dictionaries for the contigs, so we can later use a contig's name
     # to get the rest of the contig's details.
@@ -78,8 +82,13 @@ def main():
         print("   Filtered assembly 2: " + str(len(contigs2)) + " contigs, " + str(getTotalContigLength(contigs2)) + " bp\n")
 
     # Remove contigs outside the relative read depth threshold.
-    if float(args.minreaddepth) > 0.0 or float(args.maxreaddepth) > 0.0:
-        print("Filtering out contigs with a relative read depth less than " + str(args.minreaddepth) + " or greater than " + str(args.maxreaddepth) + "... ", end="")
+    if float(args.minreaddepth) > 0.0 or float(args.maxreaddepth) < float("inf"):
+        if float(args.minreaddepth) > 0.0 and float(args.maxreaddepth) < float("inf"):
+            print("Filtering out contigs with a relative read depth less than " + str(args.minreaddepth) + " or greater than " + str(args.maxreaddepth) + "... ", end="")
+        elif float(args.minreaddepth) > 0.0:
+            print("Filtering out contigs with a relative read depth less than " + str(args.minreaddepth) + "... ", end="")
+        elif float(args.maxreaddepth) < float("inf"):
+            print("Filtering out contigs with a relative read depth greater than " + str(args.maxreaddepth) + "... ", end="")
         sys.stdout.flush()
         contigs1 = filterContigsByReadDepth(contigs1, float(args.minreaddepth) * contigs1MedianReadDepth, float(args.maxreaddepth) * contigs1MedianReadDepth)
         contigs2 = filterContigsByReadDepth(contigs2, float(args.minreaddepth) * contigs2MedianReadDepth, float(args.maxreaddepth) * contigs2MedianReadDepth)
@@ -174,9 +183,9 @@ def getArguments():
     parser.add_argument('-v', '--variants', action='store', help='Save a table of variants to this CSV file', default="")
     parser.add_argument('-l', '--length', action='store', help='Minimum alignment length', default=100)
     parser.add_argument('-i', '--identity', action='store', help='Minimum alignment percent identity', default=99.0)
-    parser.add_argument('-o', '--maxoverlap', action='store', help='Maximum overlap between alignments', default=51)
-    parser.add_argument('-n', '--minreaddepth', action='store', help='Minimum contig read depth relative to median', default=0.5)
-    parser.add_argument('-x', '--maxreaddepth', action='store', help='Maximum contig read depth relative to median', default=1.5)
+    parser.add_argument('-o', '--maxoverlap', action='store', help='Maximum overlap between alignments', default=0)
+    parser.add_argument('-n', '--minreaddepth', action='store', help='Minimum contig read depth relative to median', default=0.0)
+    parser.add_argument('-x', '--maxreaddepth', action='store', help='Maximum contig read depth relative to median', default=float("inf"))
 
     return parser.parse_args()
 
@@ -351,21 +360,21 @@ def saveVariantsToCsvFile(alignments, filename):
         outfile.write(",")
         outfile.write(str(variant.contig1Position))
         outfile.write(",")
-        outfile.write(str(variant.contig1Depth))
+        outfile.write(str(variant.contig1.depth))
         outfile.write(",")
-        outfile.write(str(variant.contig1RelativeDepth))
+        outfile.write(str(variant.contig1.relativeDepth))
         outfile.write(",")
-        outfile.write(str(variant.contig1DepthRobustZScore))
+        outfile.write(str(variant.contig1.robustZScore))
         outfile.write(",")
         outfile.write(variant.contig2.shortname)
         outfile.write(",")
         outfile.write(str(variant.contig2Position))
         outfile.write(",")
-        outfile.write(str(variant.contig2Depth))
+        outfile.write(str(variant.contig2.depth))
         outfile.write(",")
-        outfile.write(str(variant.contig2RelativeDepth))
+        outfile.write(str(variant.contig2.relativeDepth))
         outfile.write(",")
-        outfile.write(str(variant.contig2DepthRobustZScore))
+        outfile.write(str(variant.contig2.robustZScore))
         outfile.write("\n")
 
 
@@ -508,25 +517,46 @@ def alignmentPassesOverlapFilter(alignment, overlappingAlignmentPairs):
 
 
 # This function finds the median read depth by base.
-def getMedianReadDepthByBase(contigs):
+def getMedianReadDepthByBaseAndMedianAbsoluteDeviation(contigs):
+
     readDepths = []
     for contig in contigs:
         for i in range(contig.length):
             readDepths.append(contig.depth)
-    readDepths.sort()
-    baseCount = len(readDepths)
-    index = (baseCount - 1) // 2
 
-    if (baseCount % 2):
-        return readDepths[index]
+    sortedReadDepths = sorted(readDepths)
+    medianReadDepthByBase = getMedian(sortedReadDepths)
+
+    absoluteDeviations = []
+    for baseDepth in readDepths:
+        absoluteDeviations.append(abs(baseDepth - medianReadDepthByBase))
+
+    sortedAbsoluteDeviations = sorted(absoluteDeviations)
+    medianAbsoluteDeviation = 1.4826 * getMedian(sortedAbsoluteDeviations)
+
+    return (medianReadDepthByBase, medianAbsoluteDeviation)
+
+
+
+def getMedian(sortedLst):
+
+    count = len(sortedLst)
+    index = (count - 1) // 2
+
+    if (count % 2):
+        return sortedLst[index]
     else:
-        return (readDepths[index] + sortedLst[index + 1]) / 2.0
+        return (sortedLst[index] + sortedLst[index + 1]) / 2.0
 
 
 
+def calculateRelativeDepthAndZScore(contigs, medianReadDepth, medianAbsoluteDeviation):
 
+    for contig in contigs:
+        contig.relativeDepth = contig.depth / medianReadDepth
 
-
+    for contig in contigs:
+        contig.robustZScore = (contig.depth - medianReadDepth) / medianAbsoluteDeviation
 
 
 
@@ -581,16 +611,10 @@ class Variant:
         self.contig1 = contig1
         self.contig1Position = contig1Position
         self.contig1Sequence = contig1Sequence
-        self.contig1Depth = 0.0 # TEMP
-        self.contig1RelativeDepth = 0.0 # TEMP
-        self.contig1DepthRobustZScore = 0.0 # TEMP
 
         self.contig2 = contig2
         self.contig2Position = contig2Position
         self.contig2Sequence = contig2Sequence
-        self.contig2Depth = 0.0 # TEMP
-        self.contig2RelativeDepth = 0.0 # TEMP
-        self.contig2DepthRobustZScore = 0.0 # TEMP
 
 
 
