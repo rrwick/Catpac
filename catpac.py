@@ -350,31 +350,7 @@ def saveVariantsToCsvFile(alignments, filename):
         variants.extend(alignment.getVariants())
 
     for variant in variants:
-        outfile.write(variant.variantType)
-        outfile.write(",")
-        outfile.write(variant.contig1Sequence)
-        outfile.write(",")
-        outfile.write(variant.contig2Sequence)
-        outfile.write(",")
-        outfile.write(variant.contig1.shortname)
-        outfile.write(",")
-        outfile.write(str(variant.contig1Position))
-        outfile.write(",")
-        outfile.write(str(variant.contig1.depth))
-        outfile.write(",")
-        outfile.write(str(variant.contig1.relativeDepth))
-        outfile.write(",")
-        outfile.write(str(variant.contig1.robustZScore))
-        outfile.write(",")
-        outfile.write(variant.contig2.shortname)
-        outfile.write(",")
-        outfile.write(str(variant.contig2Position))
-        outfile.write(",")
-        outfile.write(str(variant.contig2.depth))
-        outfile.write(",")
-        outfile.write(str(variant.contig2.relativeDepth))
-        outfile.write(",")
-        outfile.write(str(variant.contig2.robustZScore))
+        outfile.write(variant.getCsvString())
         outfile.write("\n")
 
 
@@ -569,6 +545,7 @@ def calculateRelativeDepthAndZScore(contigs, medianReadDepth, medianAbsoluteDevi
 
 # This class holds a contig: its name, sequence and length.
 class Contig:
+
     def __init__(self, name, sequence):
         self.fullname = name
         nameParts = name.split("_")
@@ -605,6 +582,7 @@ class Contig:
 
 # This class holds a variant between two sequences.  It can be either a SNP or a small indel.
 class Variant:
+
     def __init__(self, variantType, contig1, contig1Position, contig1Sequence, contig2, contig2Position, contig2Sequence):
         self.variantType = variantType
 
@@ -616,7 +594,34 @@ class Variant:
         self.contig2Position = contig2Position
         self.contig2Sequence = contig2Sequence
 
+    def getCsvString(self):
+        csvString = self.variantType
+        csvString += ","
+        csvString += self.contig1Sequence
+        csvString += ","
+        csvString += self.contig2Sequence
+        csvString += ","
+        csvString += self.contig1.shortname
+        csvString += ","
+        csvString += str(self.contig1Position)
+        csvString += ","
+        csvString += str(self.contig1.depth)
+        csvString += ","
+        csvString += str(self.contig1.relativeDepth)
+        csvString += ","
+        csvString += str(self.contig1.robustZScore)
+        csvString += ","
+        csvString += self.contig2.shortname
+        csvString += ","
+        csvString += str(self.contig2Position)
+        csvString += ","
+        csvString += str(self.contig2.depth)
+        csvString += ","
+        csvString += str(self.contig2.relativeDepth)
+        csvString += ","
+        csvString += str(self.contig2.robustZScore)
 
+        return csvString
 
 
 
@@ -634,6 +639,7 @@ class Variant:
 
 # This class holds a BLAST alignment
 class BlastAlignment:
+
     def __init__(self, blastString, contigs1Dict, contigs2Dict):
         blastStringParts = blastString.split("\t")
 
