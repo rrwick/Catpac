@@ -675,7 +675,7 @@ class BlastAlignment:
         self.mismatches = int(blastStringParts[10])
         self.gaps = int(blastStringParts[11])
         self.gapopens = int(blastStringParts[12])
-    
+
     def __eq__(self, other):
         return (self.contig1 == other.contig1 and
             self.contig1Start == other.contig1Start and
@@ -706,8 +706,18 @@ class BlastAlignment:
 
                 contig1Dashes, contig2Dashes = self.countDashesUpToPosition(i)
 
-                contig1Position = min(self.contig1Start, self.contig1End) + i - contig1Dashes
-                contig2Position = min(self.contig2Start, self.contig2End) + i - contig2Dashes
+                steps1 = i - contig1Dashes
+                steps2 = i - contig2Dashes
+
+                if self.contig1ReverseComplement:
+                    contig1Position = self.contig1.length - (self.contig1Start - steps1) + 1
+                else:
+                    contig1Position = self.contig1Start + steps1
+
+                if self.contig2ReverseComplement:
+                    contig2Position = self.contig2.length - (self.contig2Start - steps2) + 1
+                else:
+                    contig2Position = self.contig2Start + steps2
 
                 if base1 != "-" and base2 != "-":
                     variant = Variant("SNP", self.contig1, contig1Position, base1, self.contig1ReverseComplement, self.contig2, contig2Position, base2, self.contig2ReverseComplement)
