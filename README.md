@@ -63,13 +63,23 @@ Only variants contained within the BLAST alignments will be present here, which 
 
 Repeated regions of DNA can assemble into single contigs with higher than normal read depth.  Because the sequences in such contigs originate from more than one original section of DNA, it can be difficult to map reads to these contigs or generate reliable base calls.  For this reason, Catpac reports information about contig read depth and allows the user to filter based on this information (see 'Filter options' section above).
 
-Both assemblies given to Catpac have their median read depth calculated on a per base level.  This value should be close to the 'correct' read depth for a sequence which occurs only once.  The read depth of a contig divided by this median indicates how abundant a contig is compared to the 'correct' value.  For example, a sequence which occurs twice (but assembled into a single contig) would be expected to have double the median read depth and therefore have a relative read depth of about 2.0.
+Both assemblies given to Catpac have their median read depth calculated on a per base level.  This value should be close to the 'correct' read depth for a sequence which occurs only once.
 
-Catpac users can filter using relative read depth.  For example, this command will only use contigs which have a relative read depth between 0.5 and 1.5 times the median read depth: `catpac.py assembly1.fasta assembly2.fasta -v variants.csv --minreldepth 0.5 --maxreldepth 1.5`
+##### Relative read depth
+
+The read depth of a contig divided by the median indicates how abundant a contig is compared to the 'correct' value.  For example, a sequence which occurs twice (but assembled into a single contig) would be expected to have double the median read depth and therefore have a relative read depth of about 2.0.
+
+Catpac users can filter using relative read depth.  For example, this command will only use contigs which have a relative read depth between 0.5 and 1.5 times the median read depth:
+
+`catpac.py assembly1.fasta assembly2.fasta -v variants.csv --minreldepth 0.5 --maxreldepth 1.5`
+
+##### Robust z-score
 
 In addition to relative read depth, Catpac also calculates the robust z-score for each contig's read depth.  This value is similar to the more commonly used z-score, but it is less sensitive to outliers (e.g. very high read depth contigs).  For more information, see [Birmingham, A., Selfors, L. M., Forster, T., Wrobel, D., Kennedy, C. J., Shanks, E., ... Shamu, C. E. (2009). Statistical methods for analysis of high-throughput RNA interference screens. _Nature Methods_, 6(8), 569-575.](http://www.ncbi.nlm.nih.gov/pmc/articles/PMC2789971/)
 
-The robust z-score can also be used to filter.  For example, this command will only use contigs which have a robust z-score between -2.0 and 2.0: `catpac.py assembly1.fasta assembly2.fasta -v variants.csv --mindepthz -2.0 --mindepthz 2.0`
+The robust z-score can also be used to filter.  For example, this command will only use contigs which have a robust z-score between -2.0 and 2.0:
+
+`catpac.py assembly1.fasta assembly2.fasta -v variants.csv --mindepthz -2.0 --mindepthz 2.0`
 
 
 ## Known issues
