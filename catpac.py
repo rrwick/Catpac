@@ -532,7 +532,10 @@ def calculateRelativeDepthAndZScore(contigs, medianReadDepth, medianAbsoluteDevi
         contig.relativeDepth = contig.depth / medianReadDepth
 
     for contig in contigs:
-        contig.robustZScore = (contig.depth - medianReadDepth) / medianAbsoluteDeviation
+        if medianAbsoluteDeviation > 0.0:
+            contig.robustZScore = (contig.depth - medianReadDepth) / medianAbsoluteDeviation
+        else:
+            contig.robustZScore = 0.0
 
 
 
