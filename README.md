@@ -88,7 +88,14 @@ Because BLAST commands can have problems with file paths that contain spaces, Ca
 
 ## Installation
 
-No compilation or installation is required – just download/clone and run catpac.py.
+No compilation or installation is required – just download/clone and run catpac.py from the command line.
+
+You must have BLAST installed on the same machine as Catpac.  This can be done manually using the [instructions on the BLAST website](http://www.ncbi.nlm.nih.gov/books/NBK279671/) or via a package manager, e.g.:
+* `brew install homebrew/science/blast` (using Homebrew on Mac)
+* `sudo apt-get install ncbi-blast+` (using APT on Ubuntu)
+
+It may be necessary to add executable permissions to catpac.py before using it:
+`chmod u+x catpac.py`
 
 ## License
 
