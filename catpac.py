@@ -81,20 +81,36 @@ def main():
         print("   Filtered assembly 1: " + str(len(contigs1)) + " contigs, " + str(getTotalContigLength(contigs1)) + " bp")
         print("   Filtered assembly 2: " + str(len(contigs2)) + " contigs, " + str(getTotalContigLength(contigs2)) + " bp\n")
 
-    # Remove contigs outside the relative read depth threshold.
-    if float(args.minreaddepth) > 0.0 or float(args.maxreaddepth) < float("inf"):
-        if float(args.minreaddepth) > 0.0 and float(args.maxreaddepth) < float("inf"):
-            print("Filtering out contigs with a relative read depth less than " + str(args.minreaddepth) + " or greater than " + str(args.maxreaddepth) + "... ", end="")
-        elif float(args.minreaddepth) > 0.0:
-            print("Filtering out contigs with a relative read depth less than " + str(args.minreaddepth) + "... ", end="")
-        elif float(args.maxreaddepth) < float("inf"):
-            print("Filtering out contigs with a relative read depth greater than " + str(args.maxreaddepth) + "... ", end="")
+    # Remove contigs outside the relative read depth thresholds.
+    if float(args.minreldepth) > 0.0 or float(args.maxreldepth) < float("inf"):
+        if float(args.minreldepth) > 0.0 and float(args.maxreldepth) < float("inf"):
+            print("Filtering out contigs with a relative read depth less than " + str(args.minreldepth) + " or greater than " + str(args.maxreldepth) + "... ", end="")
+        elif float(args.minreldepth) > 0.0:
+            print("Filtering out contigs with a relative read depth less than " + str(args.minreldepth) + "... ", end="")
+        elif float(args.maxreldepth) < float("inf"):
+            print("Filtering out contigs with a relative read depth greater than " + str(args.maxreldepth) + "... ", end="")
         sys.stdout.flush()
-        contigs1 = filterContigsByReadDepth(contigs1, float(args.minreaddepth) * contigs1MedianReadDepth, float(args.maxreaddepth) * contigs1MedianReadDepth)
-        contigs2 = filterContigsByReadDepth(contigs2, float(args.minreaddepth) * contigs2MedianReadDepth, float(args.maxreaddepth) * contigs2MedianReadDepth)
+        contigs1 = filterContigsByReadDepth(contigs1, float(args.minreldepth) * contigs1MedianReadDepth, float(args.maxreldepth) * contigs1MedianReadDepth)
+        contigs2 = filterContigsByReadDepth(contigs2, float(args.minreldepth) * contigs2MedianReadDepth, float(args.maxreldepth) * contigs2MedianReadDepth)
         print("done")
         print("   Filtered assembly 1: " + str(len(contigs1)) + " contigs, " + str(getTotalContigLength(contigs1)) + " bp")
         print("   Filtered assembly 2: " + str(len(contigs2)) + " contigs, " + str(getTotalContigLength(contigs2)) + " bp\n")
+
+    # Remove contigs outside the read depth robust z-score thresholds.
+    if float(args.mindepthz) > float("-inf") or float(args.maxdepthz) < float("inf"):
+        if float(args.mindepthz) > float("-inf") and float(args.maxdepthz) < float("inf"):
+            print("Filtering out contigs with a read depth robust z-score less than " + str(args.mindepthz) + " or greater than " + str(args.maxdepthz) + "... ", end="")
+        elif float(args.mindepthz) > float("-inf"):
+            print("Filtering out contigs with a read depth robust z-score less than " + str(args.mindepthz) + "... ", end="")
+        elif float(args.maxdepthz) < float("inf"):
+            print("Filtering out contigs with a read depth robust z-score greater than " + str(args.maxdepthz) + "... ", end="")
+        sys.stdout.flush()
+        contigs1 = filterContigsByReadDepthZScore(contigs1, float(args.mindepthz), float(args.maxdepthz))
+        contigs2 = filterContigsByReadDepthZScore(contigs2, float(args.mindepthz), float(args.maxdepthz))
+        print("done")
+        print("   Filtered assembly 1: " + str(len(contigs1)) + " contigs, " + str(getTotalContigLength(contigs1)) + " bp")
+        print("   Filtered assembly 2: " + str(len(contigs2)) + " contigs, " + str(getTotalContigLength(contigs2)) + " bp\n")
+
 
     # Save the reduced contig sets to file.
     saveContigsToFile(contigs1, tempdir + "/contigs1.fasta")
@@ -175,17 +191,26 @@ def main():
 
 
 def getArguments():
-    parser = argparse.ArgumentParser(description='Catpac: a Contig Alignment Tool for Pairwise Assembly Comparison')
+
+    # This little trick (adapted from stackoverflow.com/questions/9025204)
+    # adds a space before numbers that start with a negative sign.  It allows
+    # for more easily passing negative numbers via a command line argument.
+    for i, arg in enumerate(sys.argv):
+        if len(arg) > 1 and arg[0] == '-' and arg[1].isdigit(): sys.argv[i] = ' ' + arg
+
+    parser = argparse.ArgumentParser(description='Catpac: a Contig Alignment Tool for Pairwise Assembly Comparison', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('assembly1', help='The first set of assembled contigs')
     parser.add_argument('assembly2', help='The second set of assembled contigs')
-    parser.add_argument('-1', '--alignment1', action='store', help='Save the alignments for the first assembly to this FASTA file', default="")
-    parser.add_argument('-2', '--alignment2', action='store', help='Save the alignments for the second assembly to this FASTA file', default="")
+    parser.add_argument('-a', '--alignment1', action='store', help='Save the alignments for the first assembly to this FASTA file', default="")
+    parser.add_argument('-b', '--alignment2', action='store', help='Save the alignments for the second assembly to this FASTA file', default="")
     parser.add_argument('-v', '--variants', action='store', help='Save a table of variants to this CSV file', default="")
-    parser.add_argument('-l', '--length', action='store', help='Minimum alignment length', default=100)
-    parser.add_argument('-i', '--identity', action='store', help='Minimum alignment percent identity', default=99.0)
-    parser.add_argument('-o', '--maxoverlap', action='store', help='Maximum overlap between alignments', default=0)
-    parser.add_argument('-n', '--minreaddepth', action='store', help='Minimum contig read depth relative to median', default=0.0)
-    parser.add_argument('-x', '--maxreaddepth', action='store', help='Maximum contig read depth relative to median', default=float("inf"))
+    parser.add_argument('-l', '--length', action='store', type=int, help='Minimum alignment length', default=100)
+    parser.add_argument('-i', '--identity', action='store', type=float, help='Minimum alignment percent identity', default=99.0)
+    parser.add_argument('-o', '--maxoverlap', action='store', type=int, help='Maximum overlap between alignments', default=0)
+    parser.add_argument('--minreldepth', action='store', type=float, help='Minimum contig read depth relative to median', default=0.0)
+    parser.add_argument('--maxreldepth', action='store', type=float, help='Maximum contig read depth relative to median', default=float("inf"))
+    parser.add_argument('--mindepthz', action='store', type=float, help='Minimum contig read depth robust z-score', default=float("-inf"))
+    parser.add_argument('--maxdepthz', action='store', type=float, help='Maximum contig read depth robust z-score', default=float("inf"))
 
     return parser.parse_args()
 
@@ -254,9 +279,19 @@ def filterContigsByLength(contigs, lengthThreshold):
 def filterContigsByReadDepth(contigs, minReadDepth, maxReadDepth):
 
     filteredContigs = []
-
     for contig in contigs:
         if contig.depth >= minReadDepth and contig.depth <= maxReadDepth:
+            filteredContigs.append(contig)
+
+    return filteredContigs
+
+
+
+def filterContigsByReadDepthZScore(contigs, minZScore, maxZScore):
+
+    filteredContigs = []
+    for contig in contigs:
+        if contig.robustZScore >= minZScore and contig.robustZScore <= maxZScore:
             filteredContigs.append(contig)
 
     return filteredContigs
