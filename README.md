@@ -25,7 +25,7 @@ Catpac must be given exactly two assembly files in FASTA format:
 
 `catpac.py assembly1.fasta assembly2.fasta`
 
-Catpac only accepts assemblies which follow the Velvet/SPAdes convention of headers: e.g. `>NODE_2_length_1382_cov_64.471779`.  This is because Catpac needs the read depth for the contigs.  If you wish to use Catpac for assembled contigs that have a different header format, you will have to edit the initialisation method (`__init__`) of the Contig class.
+Catpac only accepts assemblies which follow the [Velvet](https://www.ebi.ac.uk/~zerbino/velvet/)/[SPAdes](http://bioinf.spbau.ru/spades) convention of headers: e.g. `>NODE_2_length_1382_cov_64.471779`.  This is because Catpac needs the read depth for the contigs.  If you wish to use Catpac for assembled contigs that have a different header format, you will have to edit the initialisation method (`__init__`) of the Contig class.
 
 
 ##### Output alignments FASTA
