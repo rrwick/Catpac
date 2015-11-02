@@ -586,18 +586,21 @@ class Contig:
 # This class holds a variant between two sequences.  It can be either a SNP or a small indel.
 class Variant:
 
-    def __init__(self, variantType, contig1, contig1Position, contig1Sequence, contig2, contig2Position, contig2Sequence):
+    def __init__(self, variantType, contig1, contig1Position, contig1Sequence, contig1ReverseComplement, contig2, contig2Position, contig2Sequence, contig2ReverseComplement):
         self.variantType = variantType
 
         self.contig1 = contig1
         self.contig1Position = contig1Position
         self.contig1Sequence = contig1Sequence
+        self.contig1ReverseComplement = contig1ReverseComplement
 
         self.contig2 = contig2
         self.contig2Position = contig2Position
         self.contig2Sequence = contig2Sequence
+        self.contig2ReverseComplement = contig2ReverseComplement
 
     def getCsvString(self):
+
         csvString = self.variantType
         csvString += ","
         csvString += self.contig1Sequence
@@ -605,6 +608,8 @@ class Variant:
         csvString += self.contig2Sequence
         csvString += ","
         csvString += self.contig1.shortname
+        if self.contig1ReverseComplement:
+            csvString += "_rev_comp"
         csvString += ","
         csvString += str(self.contig1Position)
         csvString += ","
@@ -615,6 +620,8 @@ class Variant:
         csvString += str(self.contig1.robustZScore)
         csvString += ","
         csvString += self.contig2.shortname
+        if self.contig2ReverseComplement:
+            csvString += "_rev_comp"
         csvString += ","
         csvString += str(self.contig2Position)
         csvString += ","
@@ -655,6 +662,7 @@ class BlastAlignment:
         self.contig1Start = int(blastStringParts[3])
         self.contig1End = int(blastStringParts[4])
         self.contig1Sequence = blastStringParts[5]
+        self.contig1ReverseComplement = self.contig1Start > self.contig1End
 
         contig2Name = blastStringParts[6]
         self.contig2 = contigs2Dict[contig2Name]
@@ -662,6 +670,7 @@ class BlastAlignment:
         self.contig2Start = int(blastStringParts[7])
         self.contig2End = int(blastStringParts[8])
         self.contig2Sequence = blastStringParts[9]
+        self.contig2ReverseComplement = self.contig2Start > self.contig2End
 
         self.mismatches = int(blastStringParts[10])
         self.gaps = int(blastStringParts[11])
@@ -697,14 +706,14 @@ class BlastAlignment:
 
                 contig1Dashes, contig2Dashes = self.countDashesUpToPosition(i)
 
-                contig1Position = self.contig1Start + i - contig1Dashes
-                contig2Position = self.contig2Start + i - contig2Dashes
+                contig1Position = min(self.contig1Start, self.contig1End) + i - contig1Dashes
+                contig2Position = min(self.contig2Start, self.contig2End) + i - contig2Dashes
 
                 if base1 != "-" and base2 != "-":
-                    variant = Variant("SNP", self.contig1, contig1Position, base1, self.contig2, contig2Position, base2)
+                    variant = Variant("SNP", self.contig1, contig1Position, base1, self.contig1ReverseComplement, self.contig2, contig2Position, base2, self.contig2ReverseComplement)
                     singleNucleotideVariants.append(variant)
                 else:
-                    variant = Variant("indel", self.contig1, contig1Position, base1, self.contig2, contig2Position, base2)
+                    variant = Variant("indel", self.contig1, contig1Position, base1, self.contig1ReverseComplement, self.contig2, contig2Position, base2, self.contig2ReverseComplement)
                     singleNucleotideVariants.append(variant)
 
         # Now we want to collapse multi-base indels into single variants.
@@ -722,7 +731,7 @@ class BlastAlignment:
             # the indel in progress (if there is one).
             if singleNucleotideVariant.variantType == "SNP":
                 if indelInProgress:
-                    variant = Variant("indel", self.contig1, indelContig1Position, indelContig1Sequence, self.contig2, indelContig2Position, indelContig2Sequence)
+                    variant = Variant("indel", self.contig1, indelContig1Position, indelContig1Sequence, self.contig1ReverseComplement, self.contig2, indelContig2Position, indelContig2Sequence, self.contig2ReverseComplement)
                     variants.append(variant)
 
                     indelInProgress = False
@@ -754,7 +763,7 @@ class BlastAlignment:
                     # If the current indel does not match the one in progress,
                     # finish the current one and start a new one.
                     else:
-                        variant = Variant("indel", self.contig1, indelContig1Position, indelContig1Sequence, self.contig2, indelContig2Position, indelContig2Sequence)
+                        variant = Variant("indel", self.contig1, indelContig1Position, indelContig1Sequence, self.contig1ReverseComplement, self.contig2, indelContig2Position, indelContig2Sequence, self.contig2ReverseComplement)
                         variants.append(variant)
 
                         indelInProgress = True
@@ -766,7 +775,7 @@ class BlastAlignment:
         # Check to see if an indel is in progress at the end, and save it if
         # so.
         if indelInProgress:
-            variant = Variant("indel", self.contig1, indelContig1Position, indelContig1Sequence, self.contig2, indelContig2Position, indelContig2Sequence)
+            variant = Variant("indel", self.contig1, indelContig1Position, indelContig1Sequence, self.contig1ReverseComplement, self.contig2, indelContig2Position, indelContig2Sequence, self.contig2ReverseComplement)
             variants.append(variant)
 
         return variants
