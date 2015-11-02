@@ -8,6 +8,10 @@ The purpose of Catpac is to produce two reduced sets of the assemblies that are 
 
 Catpac accepts assemblies in FASTA format which follow the Velvet/SPAdes convention of headers: e.g. `>NODE_2_length_1382_cov_64.471779`
 
+## Known issues
+
+Because BLAST commands can have problems with file paths that contain spaces, Catpac can also have problems with such paths.  It is therefore recommended to use Catpac in directories which do not contain spaces in their paths.
+
 ## Installation
 
 No compilation or installation is required - just download/clone and run catpac.py.
