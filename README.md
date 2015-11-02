@@ -1,10 +1,10 @@
 # Catpac: a Contig Alignment Tool for Pairwise Assembly Comparison
 
-Catpac is a Python script for aligning and comparing two assemblies from very closely related samples.  The user provides Catpac with two files of assembled contigs from very closely related specimens.  Catpac will conduct a BLAST search between the two assemblies, and it can output the alignments and variants.
+Catpac is a Python script for aligning and comparing two assemblies from very closely related samples.  The user provides Catpac with two files of assembled contigs.  Catpac will conduct a BLAST search between the two assemblies, and it can output the alignments and variants.
 
-Catpac can accomplish two tasks:
-* Produce a reduced set of the assemblies which are more easily compared
-* Locate small-scale variations between the two assemblies
+Catpac was designed for two tasks:
+* Producing a reduced set of the two assemblies which are more easily compared
+* Locating small-scale variations between the two assemblies
 
 Catpac was built with bacterial genome assemblies in mind.  It may work for larger assemblies, but this has not been tested.
 
@@ -25,7 +25,7 @@ Catpac must be given exactly two assembly files in FASTA format:
 
 `catpac.py assembly1.fasta assembly2.fasta`
 
-Catpac accepts assemblies which follow the Velvet/SPAdes convention of headers: e.g. `>NODE_2_length_1382_cov_64.471779`
+Catpac only accepts assemblies which follow the Velvet/SPAdes convention of headers: e.g. `>NODE_2_length_1382_cov_64.471779`.  This is because Catpac needs the read depth for the contigs.  If you wish to use Catpac for assembled contigs that have a different header format, you will have to edit the initialisation method (`__init__`) of the Contig class.
 
 
 ##### Output alignments FASTA
@@ -84,7 +84,7 @@ The robust z-score can also be used to filter.  For example, this command will o
 
 ## Known issues
 
-Because BLAST commands can have problems with file paths that contain spaces, Catpac can also have problems with such paths.  It is therefore recommended to use Catpac in directories which do not contain spaces in their paths.
+Because BLAST commands can have problems with file paths that contain spaces, Catpac can as well.  It is therefore recommended to only use Catpac in directories without spaces in their paths.
 
 ## Installation
 
