@@ -691,11 +691,17 @@ class BlastAlignment:
             base2 = self.contig2Sequence[i]
 
             if base1 != base2:
+
+                contig1Dashes, contig2Dashes = self.countDashesUpToPosition(i)
+
+                contig1Position = self.contig1Start + i - contig1Dashes
+                contig2Position = self.contig2Start + i - contig2Dashes
+
                 if base1 != "-" and base2 != "-":
-                    variant = Variant("SNP", self.contig1, i, base1, self.contig2, i, base2)
+                    variant = Variant("SNP", self.contig1, contig1Position, base1, self.contig2, contig2Position, base2)
                     singleNucleotideVariants.append(variant)
                 else:
-                    variant = Variant("indel", self.contig1, i, base1, self.contig2, i, base2)
+                    variant = Variant("indel", self.contig1, contig1Position, base1, self.contig2, contig2Position, base2)
                     singleNucleotideVariants.append(variant)
 
         # Now we want to collapse multi-base indels into single variants.
@@ -762,10 +768,24 @@ class BlastAlignment:
 
         return variants
 
+    # This function counts all occurrences of a dash up to the given index
+    # in the alignment.  Counts for both the contig1 and contig2 sequences
+    # are returned.  This function is used to help translate an alignment
+    # position to a contig position.
+    def countDashesUpToPosition(self, position):
+        contig1Dashes = 0
+        contig2Dashes = 0
 
+        for i in range(position):
+            contig1Base = self.contig1Sequence[i]
+            contig2Base = self.contig2Sequence[i]
 
+            if contig1Base == "-":
+                contig1Dashes += 1
+            if contig2Base == "-":
+                contig2Dashes += 1
 
-
+        return (contig1Dashes, contig2Dashes)
 
 
 
