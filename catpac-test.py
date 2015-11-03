@@ -117,9 +117,6 @@ def runSingleCatpacSnpTest():
     for actualSnpLocation in actualSnpLocations:
         seq1Location = actualSnpLocation[0]
         seq2Location = actualSnpLocation[1]
-
-
-
         if seq1Location > seq1UniqueLength1 and seq1Location <= seq1UniqueLength1 + sharedLength and seq2Location > seq2UniqueLength1 and seq2Location <= seq2UniqueLength1 + sharedLength:
             filteredActualSnpLocations.append(actualSnpLocation)
     actualSnpLocations = filteredActualSnpLocations
