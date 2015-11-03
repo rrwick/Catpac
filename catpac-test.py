@@ -36,7 +36,7 @@ def main():
     args = getArguments()
 
     # Run the tests
-    for i in range(args.testcount):
+    for i in range(args.number):
         runSingleCatpacSnpTest()
 
 
@@ -44,7 +44,7 @@ def main():
 def getArguments():
     
     parser = argparse.ArgumentParser(description='Catpac tester', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('testcount', type=int, help='The number of random tests to conduct')
+    parser.add_argument('-n', '--number', type=int, action='store', help='The number of random tests to conduct', default=50)
 
     return parser.parse_args()
 
