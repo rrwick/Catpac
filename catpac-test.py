@@ -37,6 +37,7 @@ def main():
 
     # Run the tests
     for i in range(args.number):
+        print("\nTest " + str(i) + ":")
         runSingleCatpacSnpTest()
 
 
@@ -51,7 +52,7 @@ def getArguments():
 
 
 def runSingleCatpacSnpTest():
-    
+
     # Make a temporary directory for the alignment files.
     testdir = os.getcwd() + '/test'
     if not os.path.exists(testdir):
@@ -133,7 +134,7 @@ def runSingleCatpacSnpTest():
     if len(actualSnpLocations) != len(expectedSnpLocations):
         testPassed = False
 
-    print("\nExpected SNP locations:", expectedSnpLocations)
+    print("Expected SNP locations:", expectedSnpLocations)
     print("Actual SNP locations:  ", actualSnpLocations)
 
     if testPassed:
