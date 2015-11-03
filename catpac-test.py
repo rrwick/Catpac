@@ -37,9 +37,11 @@ def main():
 
     # Run the tests
     for i in range(args.number):
-        print("\nTest " + str(i) + ":")
-        runSingleCatpacSnpTest()
-
+        print("\nTest " + str(i+1) + ":")
+        if fiftyPercentChance():
+            runSingleCatpacSnpTest()
+        else:
+            runSingleCatpacDeletionTest()
 
 
 def getArguments():
@@ -80,8 +82,7 @@ def runSingleCatpacSnpTest():
         snpLocationsSeq1.append(snpLocationSeq2 + additionalBasesAtStartOfSeq1)
 
     # Half the time, flip sequence 1 to its reverse complement.
-    seq1RevComp = random.randint(0, 1) == 0
-    if seq1RevComp:
+    if fiftyPercentChance():
         sequence1 = getReverseComplement(sequence1)
 
     # Save the sequences to FASTA files
@@ -118,7 +119,7 @@ def runSingleCatpacSnpTest():
     for actualSnpLocation in actualSnpLocations:
         seq1Location = actualSnpLocation[0]
         seq2Location = actualSnpLocation[1]
-        if seq1Location > seq1UniqueLength1 and seq1Location <= seq1UniqueLength1 + sharedLength and seq2Location > seq2UniqueLength1 and seq2Location <= seq2UniqueLength1 + sharedLength:
+        if seq1Location > seq1UniqueLength1 and seq1Location < seq1UniqueLength1 + sharedLength and seq2Location > seq2UniqueLength1 and seq2Location < seq2UniqueLength1 + sharedLength:
             filteredActualSnpLocations.append(actualSnpLocation)
     actualSnpLocations = filteredActualSnpLocations
     actualSnpLocations.sort()
@@ -146,6 +147,108 @@ def runSingleCatpacSnpTest():
     # Delete the temporary files.
     if os.path.exists(testdir):
         shutil.rmtree(testdir)
+
+
+
+
+def runSingleCatpacDeletionTest():
+
+    # Make a temporary directory for the alignment files.
+    testdir = os.getcwd() + '/test'
+    if not os.path.exists(testdir):
+        os.makedirs(testdir)
+
+    # Create two random sequences which share a region in common.
+    seq1UniqueLength1 = random.randint(0, 200)
+    seq2UniqueLength1 = random.randint(0, 200)
+    sharedLength = random.randint(200, 1000)
+    seq1UniqueLength2 = random.randint(0, 200)
+    seq2UniqueLength2 = random.randint(0, 200)
+    sharedSequence = getRandomDNASequence(sharedLength)
+    sequence1 = getRandomDNASequence(seq1UniqueLength1) + sharedSequence + getRandomDNASequence(seq1UniqueLength2)
+    sequence2 = getRandomDNASequence(seq2UniqueLength1) + sharedSequence + getRandomDNASequence(seq2UniqueLength2)
+
+    # Create 5 random deletions in the shared region of sequence 2
+    startOfDeletionRegion = seq2UniqueLength1 + 10
+    endOfDeletionRegion = seq2UniqueLength1 + sharedLength - 10
+    deletionLocationsSeq2 = getRandomDeletionLocations(startOfDeletionRegion, endOfDeletionRegion, 5, 10, sequence2)
+    deletionLocationsSeq2.sort(reverse=True)
+
+    for deletionLocationSeq2 in deletionLocationsSeq2:
+        sequence2 = createDeletion(sequence2, deletionLocationSeq2)
+    additionalBasesAtStartOfSeq1 = seq1UniqueLength1 - seq2UniqueLength1
+    deletionLocationsSeq1 = []
+    for deletionLocationSeq2 in deletionLocationsSeq2:
+        deletionLocationsSeq1.append(deletionLocationSeq2 + additionalBasesAtStartOfSeq1)
+    deletionLocationsSeq1.sort()
+    deletionLocationsSeq2.sort()
+    for i in range(5):
+        deletionLocationsSeq2[i] = deletionLocationsSeq2[i] - i
+
+    # Half the time, flip sequence 1 to its reverse complement.
+    if fiftyPercentChance():
+        sequence1 = getReverseComplement(sequence1)
+
+    # Save the sequences to FASTA files
+    sequence1FilePath = testdir + "/seq1.fasta"
+    sequence2FilePath = testdir + "/seq2.fasta"
+    saveSequenceToFile("NODE_1_length_" + str(len(sequence1)) + "_cov_100.0", sequence1, sequence1FilePath)
+    saveSequenceToFile("NODE_2_length_" + str(len(sequence2)) + "_cov_100.0", sequence2, sequence2FilePath)
+
+    # Run Catpac on the two sequences and save the variants to file.
+    variantsFilePath = testdir + "/variants.csv"
+    catpacCommand = ["./catpac.py", sequence1FilePath, sequence2FilePath, "-l", "50", "-i", "90", "-v", variantsFilePath]
+    p = subprocess.Popen(catpacCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = p.communicate()
+
+    # We expect to find the deletions where we put them (plus 1 due to 0 vs 1
+    # based indexing).
+    expectedDeletionLocations = []
+    for i in range(len(deletionLocationsSeq1)):
+        deletionLocation1 = deletionLocationsSeq1[i] + 1
+        deletionLocation2 = deletionLocationsSeq2[i] + 1
+        expectedDeletionLocations.append((deletionLocation1, deletionLocation2))
+    expectedDeletionLocations.sort()
+
+    # Look in the variants file for where the indels were actually found.
+    actualDeletionLocations = []
+    variantsFile = open(variantsFilePath, 'r')
+    for line in variantsFile:
+        if line[0:5] == "indel":
+            lineParts = line.split(",")
+            actualDeletionLocations.append((int(lineParts[4]), int(lineParts[9])))
+
+    # Exclude indels that aren't in the shared region.
+    filteredActualDeletionLocations = []
+    for actualDeletionLocation in actualDeletionLocations:
+        seq1Location = actualDeletionLocation[0]
+        seq2Location = actualDeletionLocation[1]
+        if seq1Location > seq1UniqueLength1 and seq1Location < seq1UniqueLength1 + sharedLength and seq2Location > seq2UniqueLength1 and seq2Location < seq2UniqueLength1 + sharedLength - 5:
+            filteredActualDeletionLocations.append(actualDeletionLocation)
+    actualDeletionLocations = filteredActualDeletionLocations
+    actualDeletionLocations.sort()
+
+    # Make sure each of the expected deletions is in the actual deletions.
+    testPassed = True
+    for expectedDeletionLocation in expectedDeletionLocations:
+        if expectedDeletionLocation not in actualDeletionLocations:
+            testPassed = False
+            break
+
+    print("Expected deletion locations:", expectedDeletionLocations)
+    print("Actual deletion locations:  ", actualDeletionLocations)
+
+    if testPassed:
+        print("PASS")
+    else:
+        print("FAIL")
+        quit()
+
+    # Delete the temporary files.
+    if os.path.exists(testdir):
+        shutil.rmtree(testdir)
+
+
 
 
 
@@ -179,12 +282,44 @@ def getUniqueRandomNumbers(rangeStart, rangeEnd, count):
 
 
 
+# This function finds random locations for making deletions.  It has a couple
+# of criteria for these locations:
+#   - there can't be any nearby identical bases
+#   - they must be sufficiently spaced
+def getRandomDeletionLocations(rangeStart, rangeEnd, count, spacing, sequence):
+    randomNumbers = []
+    for i in range(count):
+        randomNumber = random.randint(rangeStart, rangeEnd)
+        while numberCloseToNumbersInList(randomNumber, randomNumbers, spacing) or \
+              sequence[randomNumber] == sequence[randomNumber-1] or \
+              sequence[randomNumber] == sequence[randomNumber+1] or \
+              sequence[randomNumber] == sequence[randomNumber-2] or \
+              sequence[randomNumber] == sequence[randomNumber+2]:
+            randomNumber = random.randint(rangeStart, rangeEnd)
+        randomNumbers.append(randomNumber)
+    return randomNumbers
+
+
+
+def numberCloseToNumbersInList(number, numberList, distance):
+    for eachNumber in numberList:
+        if abs(number - eachNumber) < distance:
+            return True
+    return False
+
+
+
 def createSnp(sequence, location):
     oldBase = sequence[location]
     newBase = getRandomBase()
     while newBase == oldBase:
         newBase = getRandomBase()
     return sequence[0:location] + newBase + sequence[location+1:]
+
+
+
+def createDeletion(sequence, location):
+    return sequence[0:location] + sequence[location+1:]
 
 
 
@@ -201,7 +336,6 @@ def saveSequenceToFile(sequenceName, sequence, filename):
 def getReverseComplement(forwardSequence):
 
     reverseComplement = ""
-
     for i in reversed(range(len(forwardSequence))):
         base = forwardSequence[i]
 
@@ -242,6 +376,9 @@ def getReverseComplement(forwardSequence):
 
     return reverseComplement
 
+
+def fiftyPercentChance():
+    return random.randint(0, 1) == 0
 
 
 # Standard boilerplate to call the main() function to begin the program.
