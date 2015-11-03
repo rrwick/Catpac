@@ -127,7 +127,10 @@ def main():
     # BLAST the second assembly against the first.
     print("Running BLAST search... ", end="")
     sys.stdout.flush()
-    blastnCommand = ["blastn", "-task", "blastn", "-db", tempdir + "/contigs1.fasta", "-query", tempdir + "/contigs2.fasta", "-outfmt", "6 length pident sseqid sstart send sseq qseqid qstart qend qseq mismatch gaps gapopen"]
+    blastnCommand = ["blastn"]
+    if args.blastn:
+        blastnCommand.extend(["-task", "blastn"])
+    blastnCommand.extend(["-db", tempdir + "/contigs1.fasta", "-query", tempdir + "/contigs2.fasta", "-outfmt", "6 length pident sseqid sstart send sseq qseqid qstart qend qseq mismatch gaps gapopen"])
     p = subprocess.Popen(blastnCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
 
@@ -211,6 +214,7 @@ def getArguments():
     parser.add_argument('--maxreldepth', action='store', type=float, help='Maximum contig read depth relative to median', default=float("inf"))
     parser.add_argument('--mindepthz', action='store', type=float, help='Minimum contig read depth robust z-score', default=float("-inf"))
     parser.add_argument('--maxdepthz', action='store', type=float, help='Maximum contig read depth robust z-score', default=float("inf"))
+    parser.add_argument('--blastn', action='store_true', help='Use blastn (instead of megablast)')
 
     return parser.parse_args()
 
