@@ -668,6 +668,44 @@ class Variant:
 
         return csvString
 
+    # This function checks whether the other variant can be combined with this
+    # one into a continuous indel.
+    def canCombine(self, other):
+
+        # Only indels can be combined.
+        if self.variantType != "indel" or other.variantType != "indel":
+            return False
+
+        # Only indels on the same contig can be combined.
+        if self.contig1Sequence[0] == "-" and other.contig1Sequence[0] != "-":
+            return False
+        if self.contig2Sequence[0] == "-" and other.contig2Sequence[0] != "-":
+            return False
+
+        # Only adjacent indels can be combined.  The contig with the sequence
+        # will have its positions shifted forward, but the contig with the
+        # gap will not.  So we need to specifically check whether the contig
+        # with the sequence has its position shifted by the right amount.
+        if self.contig1Sequence[0] != "-":
+            contig1RequiredPosition = self.contig1Position + len(self.contig1Sequence)
+            return contig1RequiredPosition == other.contig1Position
+        else:
+            contig2RequiredPosition = self.contig2Position + len(self.contig2Sequence)
+            return contig2RequiredPosition == other.contig2Position
+
+
+    # This function assumes that combination is okay, and it returns a new
+    # variant that is a combination of self and other.
+    def combine(self, other):
+        combinedContig1Sequence = self.contig1Sequence + other.contig1Sequence
+        combinedContig2Sequence = self.contig2Sequence + other.contig2Sequence
+
+        return Variant(self.variantType,
+                       self.contig1, self.contig1Position, combinedContig1Sequence, self.contig1ReverseComplement,
+                       self.contig2, self.contig2Position, combinedContig2Sequence, self.contig2ReverseComplement)
+
+
+
 
 
 
@@ -763,67 +801,31 @@ class BlastAlignment:
 
         # Now we want to collapse multi-base indels into single variants.
         variants = []
+        singleNucleotideVariantCount = len(singleNucleotideVariants)
+        i = 0
+        while i < singleNucleotideVariantCount:
+            variant = singleNucleotideVariants[i]
 
-        indelInProgress = False
-        indelContig1Sequence = ""
-        indelContig2Sequence = ""
-        indelContig1Position = 0
-        indelContig2Position = 0
+            # Combine forward as much as possible.
+            while True:
 
-        for singleNucleotideVariant in singleNucleotideVariants:
+                # If there is no next variant, quit this loop.
+                if i+1 >= singleNucleotideVariantCount:
+                    break
 
-            # If the variant is a SNP, then save the SNP variant and complete
-            # the indel in progress (if there is one).
-            if singleNucleotideVariant.variantType == "SNP":
-                if indelInProgress:
-                    variant = Variant("indel", self.contig1, indelContig1Position, indelContig1Sequence, self.contig1ReverseComplement, self.contig2, indelContig2Position, indelContig2Sequence, self.contig2ReverseComplement)
-                    variants.append(variant)
-
-                    indelInProgress = False
-                    indelContig1Sequence = ""
-                    indelContig2Sequence = ""
-                    indelContig1Position = 0
-                    indelContig2Position = 0
-
-                variants.append(singleNucleotideVariant)
-
-            # If the variant is an indel, either start a new indel in progress
-            # or continue an existing indel, as appropriate.
-            else:
-                if not indelInProgress:
-                    indelInProgress = True
-                    indelContig1Sequence = singleNucleotideVariant.contig1Sequence
-                    indelContig2Sequence = singleNucleotideVariant.contig2Sequence
-                    indelContig1Position = singleNucleotideVariant.contig1Position
-                    indelContig2Position = singleNucleotideVariant.contig2Position
-                
-                # If an indel is in progress...
+                nextVariant = singleNucleotideVariants[i+1]
+                if variant.canCombine(nextVariant):
+                    variant = variant.combine(nextVariant)
+                    i += 1
                 else:
-                    # If the current indel matches the one in progress, extend
-                    # the one in progress.
-                    if (indelContig1Sequence[0] == '-' and singleNucleotideVariant.contig1Sequence == '-') or (indelContig2Sequence[0] == '-' and singleNucleotideVariant.contig2Sequence == '-'):
-                        indelContig1Sequence += singleNucleotideVariant.contig1Sequence
-                        indelContig2Sequence += singleNucleotideVariant.contig2Sequence
+                    break
 
-                    # If the current indel does not match the one in progress,
-                    # finish the current one and start a new one.
-                    else:
-                        variant = Variant("indel", self.contig1, indelContig1Position, indelContig1Sequence, self.contig1ReverseComplement, self.contig2, indelContig2Position, indelContig2Sequence, self.contig2ReverseComplement)
-                        variants.append(variant)
-
-                        indelInProgress = True
-                        indelContig1Sequence = singleNucleotideVariant.contig1Sequence
-                        indelContig2Sequence = singleNucleotideVariant.contig2Sequence
-                        indelContig1Position = singleNucleotideVariant.contig1Position
-                        indelContig2Position = singleNucleotideVariant.contig2Position
-
-        # Check to see if an indel is in progress at the end, and save it if
-        # so.
-        if indelInProgress:
-            variant = Variant("indel", self.contig1, indelContig1Position, indelContig1Sequence, self.contig1ReverseComplement, self.contig2, indelContig2Position, indelContig2Sequence, self.contig2ReverseComplement)
             variants.append(variant)
+            i += 1
 
         return variants
+
+
 
     # This function counts all occurrences of a dash up to the given index
     # in the alignment.  Counts for both the contig1 and contig2 sequences
@@ -843,6 +845,8 @@ class BlastAlignment:
                 contig2Dashes += 1
 
         return (contig1Dashes, contig2Dashes)
+
+
 
 
 
