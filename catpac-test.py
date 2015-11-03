@@ -78,6 +78,11 @@ def runSingleCatpacSnpTest():
     for snpLocationSeq2 in snpLocationsSeq2:
         snpLocationsSeq1.append(snpLocationSeq2 + additionalBasesAtStartOfSeq1)
 
+    # Half the time, flip sequence 1 to its reverse complement.
+    seq1RevComp = random.randint(0, 1) == 0
+    if seq1RevComp:
+        sequence1 = getReverseComplement(sequence1)
+
     # Save the sequences to FASTA files
     sequence1FilePath = testdir + "/seq1.fasta"
     sequence2FilePath = testdir + "/seq2.fasta"
@@ -94,7 +99,9 @@ def runSingleCatpacSnpTest():
     # indexing).
     expectedSnpLocations = []
     for i in range(len(snpLocationsSeq1)):
-        expectedSnpLocations.append((snpLocationsSeq1[i] + 1, snpLocationsSeq2[i] + 1))
+        snpLocation1 = snpLocationsSeq1[i] + 1
+        snpLocation2 = snpLocationsSeq2[i] + 1
+        expectedSnpLocations.append((snpLocation1, snpLocation2))
     expectedSnpLocations.sort()
 
     # Look in the variants file for where the SNPs were actually found.
@@ -110,6 +117,9 @@ def runSingleCatpacSnpTest():
     for actualSnpLocation in actualSnpLocations:
         seq1Location = actualSnpLocation[0]
         seq2Location = actualSnpLocation[1]
+
+
+
         if seq1Location > seq1UniqueLength1 and seq1Location <= seq1UniqueLength1 + sharedLength and seq2Location > seq2UniqueLength1 and seq2Location <= seq2UniqueLength1 + sharedLength:
             filteredActualSnpLocations.append(actualSnpLocation)
     actualSnpLocations = filteredActualSnpLocations
@@ -187,6 +197,53 @@ def saveSequenceToFile(sequenceName, sequence, filename):
         outfile.write(sequence[0:60] + '\n')
         sequence = sequence[60:]
     outfile.write(sequence + '\n')
+
+
+
+def getReverseComplement(forwardSequence):
+
+    reverseComplement = ""
+
+    for i in reversed(range(len(forwardSequence))):
+        base = forwardSequence[i]
+
+        if base == 'A': reverseComplement += 'T'
+        elif base == 'T': reverseComplement += 'A'
+        elif base == 'G': reverseComplement += 'C'
+        elif base == 'C': reverseComplement += 'G'
+        elif base == 'a': reverseComplement += 't'
+        elif base == 't': reverseComplement += 'a'
+        elif base == 'g': reverseComplement += 'c'
+        elif base == 'c': reverseComplement += 'g'
+        elif base == 'R': reverseComplement += 'Y'
+        elif base == 'Y': reverseComplement += 'R'
+        elif base == 'S': reverseComplement += 'S'
+        elif base == 'W': reverseComplement += 'W'
+        elif base == 'K': reverseComplement += 'M'
+        elif base == 'M': reverseComplement += 'K'
+        elif base == 'r': reverseComplement += 'y'
+        elif base == 'y': reverseComplement += 'r'
+        elif base == 's': reverseComplement += 's'
+        elif base == 'w': reverseComplement += 'w'
+        elif base == 'k': reverseComplement += 'm'
+        elif base == 'm': reverseComplement += 'k'
+        elif base == 'B': reverseComplement += 'V'
+        elif base == 'D': reverseComplement += 'H'
+        elif base == 'H': reverseComplement += 'D'
+        elif base == 'V': reverseComplement += 'B'
+        elif base == 'b': reverseComplement += 'v'
+        elif base == 'd': reverseComplement += 'h'
+        elif base == 'h': reverseComplement += 'd'
+        elif base == 'v': reverseComplement += 'b'
+        elif base == 'N': reverseComplement += 'N'
+        elif base == 'n': reverseComplement += 'n'
+        elif base == '.': reverseComplement += '.'
+        elif base == '-': reverseComplement += '-'
+        elif base == '?': reverseComplement += '?'
+        else: reverseComplement += 'N'
+
+    return reverseComplement
+
 
 
 # Standard boilerplate to call the main() function to begin the program.
