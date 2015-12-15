@@ -779,7 +779,7 @@ class BlastAlignment:
             base1 = self.contig1Sequence[i]
             base2 = self.contig2Sequence[i]
 
-            if base1 != base2:
+            if base1 != base2 and base1 != 'N' and base2 != 'N':
 
                 contig1Dashes, contig2Dashes = self.countDashesUpToPosition(i)
 
