@@ -1,12 +1,8 @@
 # Catpac: a Contig Alignment Tool for Pairwise Assembly Comparison
 
-Catpac is a Python script for aligning and comparing two assemblies from very closely related samples.  The user provides Catpac with two files of assembled contigs.  Catpac will conduct a BLAST search between the two assemblies, and it can output the alignments and variants.
+Catpac is a Python script for aligning and comparing two assemblies from very closely related samples.  The user provides Catpac with two files of assembled contigs.  It will conduct a BLAST search between the two assemblies and can output the alignments and variants.  It was primarily designed to produce reduced sets of the two assemblies which are more easily compared.  These reduced sets exclude sequences which are not shared between the two assemblies, repetitive sequences (or other sequences with unusual read depth) and poorly-assembled sequences.
 
-Catpac was designed for two tasks:
-* Producing a reduced set of the two assemblies which are more easily compared
-* Locating small-scale variations between the two assemblies
-
-Catpac was built with bacterial genome assemblies in mind.  It may work for larger assemblies, but this has not been tested.
+Catpac was built for use on bacterial genome assemblies.  It may work for larger assemblies, but this has not been tested.
 
 
 ## Usage
