@@ -569,16 +569,25 @@ def calculate_relative_depth_and_z_score(contigs, median_read_depth, median_abso
 
 class Contig:
     """
-    This class holds a contig: its name, sequence and length.
+    This class holds a contig: its name, sequence, depth and length.
     """
     def __init__(self, name, sequence):
         self.fullname = name
-        name_parts = name.split("_")
-        self.short_name = name_parts[0] + "_" + name_parts[1]
-        self.number = int(name_parts[1])
-        self.depth = float(name_parts[5])
         self.sequence = sequence
         self.length = len(sequence)
+
+        # SPAdes/Velvet style contig headers.
+        if name.startswith('NODE_') or name.startswith('EDGE'):
+            name_parts = name.split("_")
+            self.short_name = name_parts[0] + "_" + name_parts[1]
+            self.number = int(name_parts[1])
+            self.depth = float(name_parts[5])
+
+        # Unicycler style contig headers.
+        elif 'depth=' in name:
+            self.short_name = name.split()[0]
+            self.number = int(self.short_name)
+            self.depth = float(name.split('depth=')[-1].split()[0].replace('x', ''))
 
     def __lt__(self, other):
         return self.length < other.length
