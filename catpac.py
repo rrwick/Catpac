@@ -189,15 +189,12 @@ def main():
     print('\nFinished! Total time to complete:', convertTimeDeltaToReadableString(duration))
 
 
-
-
-
-
 def getArguments():
-
-    # This little trick (adapted from stackoverflow.com/questions/9025204)
-    # adds a space before numbers that start with a negative sign.  It allows
-    # for more easily passing negative numbers via a command line argument.
+    """
+    This little trick (adapted from stackoverflow.com/questions/9025204)
+    adds a space before numbers that start with a negative sign.  It allows
+    for more easily passing negative numbers via a command line argument.
+    """
     for i, arg in enumerate(sys.argv):
         if len(arg) > 1 and arg[0] == '-' and arg[1].isdigit(): sys.argv[i] = ' ' + arg
 
@@ -219,10 +216,10 @@ def getArguments():
     return parser.parse_args()
 
 
-
-# This function takes a contig filename and returns a list of Contig objects.
 def loadContigs(contigFilename):
-
+    """
+    This function takes a contig filename and returns a list of Contig objects.
+    """
     contigs = []
 
     contigFile = open(contigFilename, 'r')
@@ -244,7 +241,6 @@ def loadContigs(contigFilename):
             if len(name) > 0:
                 contig = Contig(name, sequence)
                 contigs.append(contig)
-                name = ''
                 sequence = ''
 
             name = strippedLine[1:]
@@ -261,45 +257,38 @@ def loadContigs(contigFilename):
     return contigs
 
 
-
-# This function takes a list of Contig objects and returns another list of
-# Contig objects.  Only contigs with a length greater than or equal to the
-# threshold will make it into the returned list.
 def filterContigsByLength(contigs, lengthThreshold):
-
+    """
+    This function takes a list of Contig objects and returns another list of
+    Contig objects.  Only contigs with a length greater than or equal to the
+    threshold will make it into the returned list.
+    """
     lengthThreshold = int(lengthThreshold)
     filteredContigs = []
-
     for contig in contigs:
         if contig.length >= lengthThreshold:
             filteredContigs.append(contig)
-
     return filteredContigs
 
 
-
-# This function takes a list of Contig objects and returns another list which
-# only contains the contigs within the given read depth range.
 def filterContigsByReadDepth(contigs, minReadDepth, maxReadDepth):
-
+    """
+    This function takes a list of Contig objects and returns another list which
+    only contains the contigs within the given read depth range.
+    """
     filteredContigs = []
     for contig in contigs:
         if contig.depth >= minReadDepth and contig.depth <= maxReadDepth:
             filteredContigs.append(contig)
-
     return filteredContigs
 
 
-
 def filterContigsByReadDepthZScore(contigs, minZScore, maxZScore):
-
     filteredContigs = []
     for contig in contigs:
         if contig.robustZScore >= minZScore and contig.robustZScore <= maxZScore:
             filteredContigs.append(contig)
-
     return filteredContigs
-
 
 
 def convertTimeDeltaToReadableString(timeDelta):
@@ -311,14 +300,11 @@ def convertTimeDeltaToReadableString(timeDelta):
     seconds = seconds % 60
     seconds += timeDelta.microseconds / 1000000.0
     secondString = "{:.1f}".format(seconds)
-
-    returnString = ""
     if hours > 0:
         return str(hours) + ' h, ' + str(minutes) + ' min, ' + secondString + ' s'
     if minutes > 0:
         return str(minutes) + ' min, ' + secondString + ' s'
     return secondString + ' s'
-
 
 
 def saveContigsToFile(contigList, filename):
@@ -333,9 +319,11 @@ def saveContigsToFile(contigList, filename):
 
 
 
-# If contig1 is True, then the alignments for the first set of contigs are
-# saved to file.  If False, the alignments for the second set are saved.
 def saveAlignmentsToFastaFile(alignments, filename, contig1):
+    """
+    If contig1 is True, then the alignments for the first set of contigs are
+    saved to file.  If False, the alignments for the second set are saved.
+    """
     outfile = open(filename, 'w')
 
     for alignment in alignments:
@@ -362,7 +350,6 @@ def saveAlignmentsToFastaFile(alignments, filename, contig1):
             outfile.write(sequence[0:60] + '\n')
             sequence = sequence[60:]
         outfile.write(sequence + '\n')
-
 
 
 def saveVariantsToCsvFile(alignments, filename):
@@ -393,7 +380,6 @@ def saveVariantsToCsvFile(alignments, filename):
         outfile.write("\n")
 
 
-
 def getTotalContigLength(contigs):
     totalLength = 0
     for contig in contigs:
@@ -401,43 +387,33 @@ def getTotalContigLength(contigs):
     return totalLength
 
 
-
 def filterBlastAlignmentsByLength(alignments, minLength):
     filteredAlignments = []
-
     for alignment in alignments:
         if alignment.length >= minLength:
             filteredAlignments.append(alignment)
-
     return filteredAlignments
 
 
 def filterBlastAlignmentsByIdentity(alignments, minIdentity):
     filteredAlignments = []
-
     for alignment in alignments:
         if alignment.percentIdentity >= minIdentity:
             filteredAlignments.append(alignment)
-
     return filteredAlignments
 
 
-
 def totalMismatchesGapsAndLength(alignments):
-
     mismatches = 0
     gaps = 0
     gapopens = 0
     length = 0
-
     for alignment in alignments:
         mismatches += alignment.mismatches
         gaps += alignment.gaps
         gapopens += alignment.gapopens
         length += alignment.length
-
-    return (mismatches, gaps, gapopens, length)
-
+    return mismatches, gaps, gapopens, length
 
 
 def filterBlastAlignmentsByOverlap(alignments, contigs1, contigs2, maxOverlap):
@@ -454,7 +430,6 @@ def filterBlastAlignmentsByOverlap(alignments, contigs1, contigs2, maxOverlap):
             filteredAlignments.append(alignment)
 
     return filteredAlignments
-
 
 
 # This function looks at two alignments and determines if they overlap, either
@@ -502,13 +477,15 @@ def doesAlignmentPairOverlap(alignmentPair, maxOverlap):
             return True
 
 
-# An alignment is said to pass the overlap filter is one of the two conditions
-# is true:
-#    1) it is not in any overlapping pairs
-#    2) it is in overlapping pairs, but it is always the longer alignment in
-#       the pair
-def alignmentPassesOverlapFilter(alignment, overlappingAlignmentPairs):
 
+def alignmentPassesOverlapFilter(alignment, overlappingAlignmentPairs):
+    """
+    An alignment is said to pass the overlap filter is one of the two conditions
+    is true:
+   1) it is not in any overlapping pairs
+   2) it is in overlapping pairs, but it is always the longer alignment in
+      the pair
+    """
     for overlappingAlignmentPair in overlappingAlignmentPairs:
         alignment1 = overlappingAlignmentPair[0]
         alignment2 = overlappingAlignmentPair[1]
@@ -530,10 +507,10 @@ def alignmentPassesOverlapFilter(alignment, overlappingAlignmentPairs):
     return True
 
 
-
-# This function finds the median read depth by base.
 def getMedianReadDepthByBaseAndMedianAbsoluteDeviation(contigs):
-
+    """
+    This function finds the median read depth by base.
+    """
     readDepths = []
     for contig in contigs:
         for i in range(contig.length):
@@ -552,24 +529,18 @@ def getMedianReadDepthByBaseAndMedianAbsoluteDeviation(contigs):
     return (medianReadDepthByBase, medianAbsoluteDeviation)
 
 
-
 def getMedian(sortedLst):
-
     count = len(sortedLst)
     index = (count - 1) // 2
-
     if (count % 2):
         return sortedLst[index]
     else:
         return (sortedLst[index] + sortedLst[index + 1]) / 2.0
 
 
-
 def calculateRelativeDepthAndZScore(contigs, medianReadDepth, medianAbsoluteDeviation):
-
     for contig in contigs:
         contig.relativeDepth = contig.depth / medianReadDepth
-
     for contig in contigs:
         if medianAbsoluteDeviation > 0.0:
             contig.robustZScore = (contig.depth - medianReadDepth) / medianAbsoluteDeviation
@@ -577,17 +548,10 @@ def calculateRelativeDepthAndZScore(contigs, medianReadDepth, medianAbsoluteDevi
             contig.robustZScore = 0.0
 
 
-
-
-
-
-
-
-
-
-# This class holds a contig: its name, sequence and length.
 class Contig:
-
+    """
+    This class holds a contig: its name, sequence and length.
+    """
     def __init__(self, name, sequence):
         self.fullname = name
         nameParts = name.split("_")
@@ -607,24 +571,13 @@ class Contig:
         return self.fullname
 
     def __eq__(self, other):
-        return (self.fullname == other.fullname)
+        return self.fullname == other.fullname
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-# This class holds a variant between two sequences.  It can be either a SNP or a small indel.
 class Variant:
-
+    """
+    This class holds a variant between two sequences. It can be either a SNP or a small indel.
+    """
     def __init__(self, variantType, contig1, contig1Position, contig1Sequence, contig1ReverseComplement, contig2, contig2Position, contig2Sequence, contig2ReverseComplement):
         self.variantType = variantType
 
@@ -639,7 +592,6 @@ class Variant:
         self.contig2ReverseComplement = contig2ReverseComplement
 
     def getCsvString(self):
-
         csvString = self.variantType
         csvString += ","
         csvString += self.contig1Sequence
@@ -669,13 +621,13 @@ class Variant:
         csvString += str(self.contig2.relativeDepth)
         csvString += ","
         csvString += str(self.contig2.robustZScore)
-
         return csvString
 
-    # This function checks whether the other variant can be combined with this
-    # one into a continuous indel.
     def canCombine(self, other):
-
+        """
+        This function checks whether the other variant can be combined with this
+        one into a continuous indel.
+        """
         # Only indels can be combined.
         if self.variantType != "indel" or other.variantType != "indel":
             return False
@@ -697,34 +649,18 @@ class Variant:
             contig2RequiredPosition = self.contig2Position + len(self.contig2Sequence)
             return contig2RequiredPosition == other.contig2Position
 
-
-    # This function assumes that combination is okay, and it returns a new
-    # variant that is a combination of self and other.
     def combine(self, other):
+        """
+        This function assumes that combination is okay, and it returns a new
+        variant that is a combination of self and other.
+        """
         combinedContig1Sequence = self.contig1Sequence + other.contig1Sequence
         combinedContig2Sequence = self.contig2Sequence + other.contig2Sequence
-
         return Variant(self.variantType,
                        self.contig1, self.contig1Position, combinedContig1Sequence, self.contig1ReverseComplement,
                        self.contig2, self.contig2Position, combinedContig2Sequence, self.contig2ReverseComplement)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# This class holds a BLAST alignment
 class BlastAlignment:
 
     def __init__(self, blastString, contigs1Dict, contigs2Dict):
@@ -769,9 +705,10 @@ class BlastAlignment:
         return self.contig1Name + "_" + str(self.contig1Start) + "_" + str(self.contig1End) + "_" + \
                self.contig2Name + "_" + str(self.contig2Start) + "_" + str(self.contig2End)
 
-    # This function returns a list of all the variants within the alignment.
     def getVariants(self):
-
+        """
+        This function returns a list of all the variants within the alignment.
+        """
         # First loop through the alignment, pulling out all variants on a
         # base-by-base basis.
         singleNucleotideVariants = []
@@ -829,39 +766,24 @@ class BlastAlignment:
 
         return variants
 
-
-
-    # This function counts all occurrences of a dash up to the given index
-    # in the alignment.  Counts for both the contig1 and contig2 sequences
-    # are returned.  This function is used to help translate an alignment
-    # position to a contig position.
     def countDashesUpToPosition(self, position):
+        """
+        This function counts all occurrences of a dash up to the given index
+        in the alignment.  Counts for both the contig1 and contig2 sequences
+        are returned.  This function is used to help translate an alignment
+        position to a contig position.
+        """
         contig1Dashes = 0
         contig2Dashes = 0
-
         for i in range(position):
             contig1Base = self.contig1Sequence[i]
             contig2Base = self.contig2Sequence[i]
-
             if contig1Base == "-":
                 contig1Dashes += 1
             if contig2Base == "-":
                 contig2Dashes += 1
-
-        return (contig1Dashes, contig2Dashes)
-
+        return contig1Dashes, contig2Dashes
 
 
-
-
-
-
-
-
-
-
-
-
-# Standard boilerplate to call the main() function to begin the program.
 if __name__ == '__main__':
     main()
