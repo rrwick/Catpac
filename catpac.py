@@ -36,7 +36,7 @@ def main():
     args = get_arguments()
 
     print("\nCatpac: a Contig Alignment Tool for Pairwise Assembly Comparison"
-          "\n----------------------------------------------------------------\n")
+          "\n----------------------------------------------------------------")
 
     # Load in the contigs from each assembly.
     print("Loading assemblies... ", end="")
@@ -65,12 +65,12 @@ def main():
 
     # Build dictionaries for the contigs, so we can later use a contig's name
     # to get the rest of the contig's details.
-    contigs1_dict = {}
+    contigs_1_dict = {}
     for contig in contigs1:
-        contigs1_dict[contig.fullname] = contig
-    contigs2_dict = {}
+        contigs_1_dict[contig.fullname] = contig
+    contigs_2_dict = {}
     for contig in contigs2:
-        contigs2_dict[contig.fullname] = contig
+        contigs_2_dict[contig.fullname] = contig
 
     # Make a temporary directory for the alignment files.
     tempdir = os.getcwd() + '/temp'
@@ -162,7 +162,7 @@ def main():
     alignment_strings = out.splitlines()
     blast_alignments = []
     for alignmentString in alignment_strings:
-        alignment = BlastAlignment(alignmentString, contigs1_dict, contigs2_dict)
+        alignment = BlastAlignment(alignmentString, contigs_1_dict, contigs_2_dict)
         blast_alignments.append(alignment)
     print("done\n")
 
@@ -229,11 +229,11 @@ def get_arguments():
                         help='The first set of assembled contigs')
     parser.add_argument('assembly2',
                         help='The second set of assembled contigs')
-    parser.add_argument('-a', '--alignment1', action='store', default="",
+    parser.add_argument('-a', '--alignment1', action='store', default="catpac_1.fasta",
                         help='Save the alignments for the first assembly to this FASTA file')
-    parser.add_argument('-b', '--alignment2', action='store', default="",
+    parser.add_argument('-b', '--alignment2', action='store', default="catpac_2.fasta",
                         help='Save the alignments for the second assembly to this FASTA file')
-    parser.add_argument('-v', '--variants', action='store', default="",
+    parser.add_argument('-v', '--variants', action='store', default="catpac_variants.csv",
                         help='Save a table of variants to this CSV file')
     parser.add_argument('-l', '--length', action='store', type=int, default=100,
                         help='Minimum alignment length')
@@ -353,12 +353,12 @@ def save_alignments_to_fasta_file(alignments, filename, contig1):
         alignment_name = ""
         if contig1:
             alignment_name += alignment.contig1.fullname
-            alignment_name += "_" + str(alignment.contig1Start)
-            alignment_name += "_to_" + str(alignment.contig1End)
+            alignment_name += "_" + str(alignment.contig_1_start)
+            alignment_name += "_to_" + str(alignment.contig_1_end)
         else:
             alignment_name += alignment.contig2.fullname
-            alignment_name += "_" + str(alignment.contig2Start)
-            alignment_name += "_to_" + str(alignment.contig2End)
+            alignment_name += "_" + str(alignment.contig_2_start)
+            alignment_name += "_to_" + str(alignment.contig_2_end)
 
         outfile.write('>' + alignment_name + '\n')
 
@@ -465,10 +465,10 @@ def does_alignment_pair_overlap(alignment_pair, max_overlap):
 
     if alignment1.contig1 == alignment2.contig1:
 
-        a1c1_start = alignment1.contig1Start
-        a1c1_end = alignment1.contig1End
-        a2c1_start = alignment2.contig1Start
-        a2c1_end = alignment2.contig1End
+        a1c1_start = alignment1.contig_1_start
+        a1c1_end = alignment1.contig_1_end
+        a2c1_start = alignment2.contig_1_start
+        a2c1_end = alignment2.contig_1_end
 
         a1c1_positions = set(range(a1c1_start, a1c1_end + 1))
         a2c1_positions = set(range(a2c1_start, a2c1_end + 1))
@@ -478,10 +478,10 @@ def does_alignment_pair_overlap(alignment_pair, max_overlap):
 
     if alignment1.contig2 == alignment2.contig2:
 
-        a1c2_start = alignment1.contig2Start
-        a1c2_end = alignment1.contig2End
-        a2c2_start = alignment2.contig2Start
-        a2c2_end = alignment2.contig2End
+        a1c2_start = alignment1.contig_2_start
+        a1c2_end = alignment1.contig_2_end
+        a2c2_start = alignment2.contig_2_start
+        a2c2_end = alignment2.contig_2_end
 
         # Swap the positions, if necessary (happens when a hit is on the
         # reverse complement strand)
@@ -572,7 +572,7 @@ class Contig:
     This class holds a contig: its name, sequence, depth and length.
     """
     def __init__(self, name, sequence):
-        self.fullname = name
+        self.fullname = name.split()[0]
         self.sequence = sequence
         self.length = len(sequence)
 
@@ -586,7 +586,10 @@ class Contig:
         # Unicycler style contig headers.
         elif 'depth=' in name:
             self.short_name = name.split()[0]
-            self.number = int(self.short_name)
+            try:
+                self.number = int(self.short_name)
+            except ValueError:
+                self.number = int(self.short_name.split('_')[-1])
             self.depth = float(name.split('depth=')[-1].split()[0].replace('x', ''))
 
     def __lt__(self, other):
@@ -701,21 +704,21 @@ class BlastAlignment:
         self.length = int(blast_string_parts[0])
         self.percentIdentity = float(blast_string_parts[1])
 
-        self.contig1Name = blast_string_parts[2]
-        self.contig1 = contigs_1_dict[self.contig1Name]
+        self.contig_1_name = blast_string_parts[2]
+        self.contig1 = contigs_1_dict[self.contig_1_name]
 
-        self.contig1Start = int(blast_string_parts[3])
-        self.contig1End = int(blast_string_parts[4])
+        self.contig_1_start = int(blast_string_parts[3])
+        self.contig_1_end = int(blast_string_parts[4])
         self.contig_1_sequence = blast_string_parts[5]
-        self.contig_1_reverse_complement = self.contig1Start > self.contig1End
+        self.contig_1_reverse_complement = self.contig_1_start > self.contig_1_end
 
-        self.contig2Name = blast_string_parts[6]
-        self.contig2 = contigs_2_dict[self.contig2Name]
+        self.contig_2_name = blast_string_parts[6]
+        self.contig2 = contigs_2_dict[self.contig_2_name]
 
-        self.contig2Start = int(blast_string_parts[7])
-        self.contig2End = int(blast_string_parts[8])
+        self.contig_2_start = int(blast_string_parts[7])
+        self.contig_2_end = int(blast_string_parts[8])
         self.contig_2_sequence = blast_string_parts[9]
-        self.contig_2_reverse_complement = self.contig2Start > self.contig2End
+        self.contig_2_reverse_complement = self.contig_2_start > self.contig_2_end
 
         self.mismatches = int(blast_string_parts[10])
         self.gaps = int(blast_string_parts[11])
@@ -723,20 +726,21 @@ class BlastAlignment:
 
     def __eq__(self, other):
         return (self.contig1 == other.contig1 and
-                self.contig1Start == other.contig1Start and
-                self.contig1End == other.contig1End and
+                self.contig_1_start == other.contig_1_start and
+                self.contig_1_end == other.contig_1_end and
                 self.contig2 == other.contig2 and
-                self.contig2Start == other.contig2Start and
-                self.contig2End == other.contig2End)
+                self.contig_2_start == other.contig_2_start and
+                self.contig_2_end == other.contig_2_end)
 
     def __str__(self):
-        return self.contig1Name + ": " + str(self.contig1Start) + " to " + str(self.contig1End) + \
-               ", " + self.contig2Name + ": " + str(self.contig2Start) + " to " + \
-               str(self.contig2End)
+        return self.contig_1_name + ": " + str(self.contig_1_start) + " to " + \
+               str(self.contig_1_end) + ", " + self.contig_2_name + ": " + \
+               str(self.contig_2_start) + " to " + str(self.contig_2_end)
 
     def __repr__(self):
-        return self.contig1Name + "_" + str(self.contig1Start) + "_" + str(self.contig1End) + \
-               "_" + self.contig2Name + "_" + str(self.contig2Start) + "_" + str(self.contig2End)
+        return self.contig_1_name + "_" + str(self.contig_1_start) + "_" + \
+               str(self.contig_1_end) + "_" + self.contig_2_name + "_" + \
+               str(self.contig_2_start) + "_" + str(self.contig_2_end)
 
     def get_variants(self):
         """
@@ -757,14 +761,14 @@ class BlastAlignment:
                 steps2 = i - contig2_dashes
 
                 if self.contig_1_reverse_complement:
-                    contig1_position = self.contig1.length - (self.contig1Start - steps1) + 1
+                    contig1_position = self.contig1.length - (self.contig_1_start - steps1) + 1
                 else:
-                    contig1_position = self.contig1Start + steps1
+                    contig1_position = self.contig_1_start + steps1
 
                 if self.contig_2_reverse_complement:
-                    contig2_position = self.contig2.length - (self.contig2Start - steps2) + 1
+                    contig2_position = self.contig2.length - (self.contig_2_start - steps2) + 1
                 else:
-                    contig2_position = self.contig2Start + steps2
+                    contig2_position = self.contig_2_start + steps2
 
                 if base1 != "-" and base2 != "-":
                     variant = Variant("SNP", self.contig1, contig1_position, base1,
