@@ -592,6 +592,12 @@ class Contig:
                 self.number = int(self.short_name.split('_')[-1])
             self.depth = float(name.split('depth=')[-1].split()[0].replace('x', ''))
 
+        # Skesa-style contig headers.
+	elif name.startswith('Contig_'):
+            name_parts = name.split("_")
+            self.short_name = name_parts[0] + "_" + name_parts[1]
+            self.depth = float(name_parts[2]) 
+
     def __lt__(self, other):
         return self.length < other.length
 

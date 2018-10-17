@@ -21,7 +21,9 @@ Catpac must be given exactly two assembly files in FASTA format:
 
 `catpac.py assembly1.fasta assembly2.fasta`
 
-Catpac only accepts assemblies which follow the [Velvet](https://www.ebi.ac.uk/~zerbino/velvet/)/[SPAdes](http://bioinf.spbau.ru/spades) convention of headers: e.g. `>NODE_2_length_1382_cov_64.471779`.  This is because Catpac needs the read depth for the contigs.  If you wish to use Catpac for assembled contigs that have a different header format, you will have to edit the initialisation method (`__init__`) of the Contig class.
+Catpac accepts assemblies which follow the convention of [Velvet](https://www.ebi.ac.uk/~zerbino/velvet/)/[SPAdes](http://bioinf.spbau.ru/spades) headers (e.g. `>NODE_1_length_351930_cov_64.471779`), [Unicycler](https://github.com/rrwick/Unicycler) headers (e.g. `>1 length=351930 depth=1.05x`) or [SKESA](https://github.com/ncbi/SKESA) headers (e.g. `Contig_1_64.4718`).  This is because Catpac needs the read depth for the contigs.  If you wish to use Catpac for assembled contigs that have a different header format, you will have to edit the initialisation method (`__init__`) of the Contig class.
+
+[SKESA](https://github.com/ncbi/SKESA) is a very good assembler choice for producing Catpac input assemblies. Its conservative approach (breaking contigs when it finds any ambiguity) means that SKESA assemblies produce fewer false positive variants in Catpac than assemblies from other tools.
 
 
 ##### Output alignments FASTA
