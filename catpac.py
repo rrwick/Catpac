@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
-Copyright 2017 Ryan Wick
+Copyright 2019 Ryan Wick
 
 This file is part of Catpac.
 
@@ -19,9 +19,6 @@ You should have received a copy of the GNU General Public License along with
 Catpac.  If not, see <http:# www.gnu.org/licenses/>.
 """
 
-
-from __future__ import division
-from __future__ import print_function
 import sys
 import subprocess
 import os
@@ -156,7 +153,8 @@ def main():
                        "-outfmt", "6 length pident sseqid sstart send sseq qseqid "
                                   "qstart qend qseq mismatch gaps gapopen"]
     p = subprocess.Popen(blastn_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = p.communicate()
+    out, _ = p.communicate()
+    out = out.decode()
 
     # Save the alignments in Python objects.
     alignment_strings = out.splitlines()
@@ -593,7 +591,7 @@ class Contig:
             self.depth = float(name.split('depth=')[-1].split()[0].replace('x', ''))
 
         # Skesa-style contig headers.
-	elif name.startswith('Contig_'):
+        elif name.startswith('Contig_'):
             name_parts = name.split("_")
             self.short_name = name_parts[0] + "_" + name_parts[1]
             self.depth = float(name_parts[2]) 
