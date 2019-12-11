@@ -468,6 +468,13 @@ def does_alignment_pair_overlap(alignment_pair, max_overlap):
         a2c1_start = alignment2.contig_1_start
         a2c1_end = alignment2.contig_1_end
 
+        # Swap the positions, if necessary (happens when a hit is on the
+        # reverse complement strand)
+        if a1c1_start > a1c1_end:
+            a1c1_start, a1c1_end = a1c1_end, a1c1_start
+        if a2c1_start > a2c1_end:
+            a2c1_start, a2c1_end = a2c1_end, a2c1_start
+
         a1c1_positions = set(range(a1c1_start, a1c1_end + 1))
         a2c1_positions = set(range(a2c1_start, a2c1_end + 1))
         c1_overlap_length = len(a1c1_positions & a2c1_positions)
